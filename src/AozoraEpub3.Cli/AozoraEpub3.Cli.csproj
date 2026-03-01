@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="3.0.0-preview.1.26104.118" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AozoraEpub3.Core\AozoraEpub3.Core.csproj" />
+  </ItemGroup>
+
+  <!-- web設定ファイルを出力ディレクトリにコピー -->
+  <ItemGroup>
+    <Content Include="..\..\web\**\*" CopyToOutputDirectory="PreserveNewest">
+      <Link>web\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
+</Project>
