@@ -1,0 +1,120 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AozoraEpub3.Gui.ViewModels"
+             x:Class="AozoraEpub3.Gui.Views.WebConvertView"
+             x:DataType="vm:WebConvertViewModel">
+
+  <Grid RowDefinitions="Auto,*,Auto,Auto,Auto" Margin="20,16">
+
+    <!-- ── URL 入力エリア ── -->
+    <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,16">
+      <TextBlock Text="{DynamicResource Str_Web_UrlLabel}"
+                 FontSize="14" FontWeight="SemiBold" />
+      <TextBox Text="{Binding Url}"
+               Watermark="{DynamicResource Str_Web_UrlPlaceholder}"
+               FontSize="14" />
+    </StackPanel>
+
+    <!-- ── Web 設定グループ ── -->
+    <Border Grid.Row="1"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="1" CornerRadius="8"
+            Padding="16,12" Margin="0,0,0,12">
+      <StackPanel Spacing="10">
+
+        <!-- 出力先 -->
+        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+          <TextBlock Grid.Row="0" Grid.Column="0"
+                     Grid.ColumnSpan="3"
+                     Text="{DynamicResource Str_Setting_OutputDir}"
+                     FontSize="12" Opacity="0.7" />
+          <TextBlock Grid.Row="1" Grid.Column="0"
+                     Text="" Width="0" />
+          <TextBox Grid.Row="1" Grid.Column="1"
+                   Text="{Binding OutputDirectory}"
+                   Watermark="{DynamicResource Str_Setting_OutputDirPlaceholder}" />
+          <Button Grid.Row="1" Grid.Column="2"
+                  Content="{DynamicResource Str_Setting_Browse}"
+                  x:Name="OutputDirBrowseButton"
+                  Margin="4,0,0,0" Padding="10,4" />
+        </Grid>
+
+        <!-- ダウンロード間隔 -->
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{DynamicResource Str_Web_Interval}"
+                     VerticalAlignment="Center" FontSize="13" />
+          <!-- 最小値 500ms を UI 側で強制 -->
+          <NumericUpDown Grid.Column="1"
+                         Value="{Binding DownloadIntervalMs}"
+                         Minimum="500" Maximum="60000"
+                         Width="130" />
+        </Grid>
+
+        <!-- web設定ディレクトリ -->
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <TextBox Grid.Column="0"
+                   Text="{Binding WebConfigDirectory}"
+                   Watermark="{DynamicResource Str_Web_WebConfigDir}" />
+          <Button Grid.Column="1"
+                  Content="{DynamicResource Str_Setting_Browse}"
+                  x:Name="WebConfigDirBrowseButton"
+                  Margin="4,0,0,0" Padding="10,4" />
+        </Grid>
+
+      </StackPanel>
+    </Border>
+
+    <!-- ── 変換実行ボタン ── -->
+    <Button Grid.Row="2"
+            Content="{DynamicResource Str_Web_Convert}"
+            Command="{Binding ConvertCommand}"
+            HorizontalAlignment="Stretch"
+            Padding="0,14"
+            FontSize="15" FontWeight="SemiBold"
+            Classes="accent"
+            Margin="0,0,0,8" />
+
+    <!-- ── ステータスバー ── -->
+    <Border Grid.Row="3"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="1" CornerRadius="8"
+            Padding="12,8" Margin="0,0,0,4">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBlock Text="{Binding StatusMessage}"
+                   VerticalAlignment="Center" FontSize="12" Opacity="0.8" />
+        <ProgressBar Grid.Column="1"
+                     Value="{Binding ProgressValue}"
+                     Minimum="0" Maximum="100"
+                     Width="180" Height="6" Margin="12,0"
+                     VerticalAlignment="Center"
+                     IsVisible="{Binding IsConverting}" />
+        <Button Grid.Column="2"
+                Content="{DynamicResource Str_Action_Cancel}"
+                Command="{Binding CancelCommand}"
+                Padding="8,2" FontSize="11"
+                IsVisible="{Binding IsConverting}" />
+      </Grid>
+    </Border>
+
+    <!-- ── ログエリア ── -->
+    <Border Grid.Row="4"
+            IsVisible="{Binding IsLogVisible}"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="1" CornerRadius="8"
+            MaxHeight="160">
+      <ListBox ItemsSource="{Binding LogLines}"
+               BorderThickness="0"
+               FontFamily="Consolas,monospace"
+               FontSize="11">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" TextWrapping="NoWrap" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+
+  </Grid>
+</UserControl>

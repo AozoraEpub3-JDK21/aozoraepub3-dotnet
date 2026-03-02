@@ -1,0 +1,735 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AozoraEpub3.Gui.ViewModels"
+             xmlns:models="using:AozoraEpub3.Gui.Models"
+             x:Class="AozoraEpub3.Gui.Views.LocalConvertView"
+             x:DataType="vm:LocalConvertViewModel">
+
+  <!--
+    ══════════════════════════════════════════════════════════════════════════
+    ローカル変換ビュー全体レイアウト
+    ─────────────────────────────────────────────────────────────────────────
+    ・Grid の単一セル内に MainArea と DrawerPanel を重ねて配置（オーバーレイ方式）
+    ・DrawerPanel は HorizontalAlignment="Right" + Width アニメーションで
+      右側からスライドインするドロワーとして機能する
+    ──────────────────────────────────────────────────────────────────────────
+    MainArea の縦方向構成:
+      Row 0: ドラッグ＆ドロップゾーン（Hero Area）
+      Row 1: ファイル一覧 ListView
+      Row 2: 基本設定（出力先 / 対象端末）+ 詳細設定ボタン
+      Row 3: 変換実行ボタン
+      Row 4: ステータスバー（プログレス + ログトグル）
+      Row 5: ログエリア（折りたたみ可能）
+    ══════════════════════════════════════════════════════════════════════════
+  -->
+  <Grid ClipToBounds="True">
+
+    <!-- ════════════════════════════════════════════════
+         メインエリア（ドロワーの下に常時表示）
+         ════════════════════════════════════════════════ -->
+    <Grid x:Name="MainArea"
+          RowDefinitions="Auto,*,Auto,Auto,Auto,Auto"
+          Margin="0">
+
+      <!-- ────── Row 0: ドラッグ＆ドロップゾーン ────── -->
+      <Border Grid.Row="0"
+              x:Name="DropZoneBorder"
+              Margin="20,20,20,8"
+              MinHeight="140"
+              BorderThickness="2"
+              CornerRadius="12"
+              Cursor="Hand">
+
+        <!-- ドラッグオーバー時に背景色が変わるスタイル制御 -->
+        <Border.Styles>
+          <Style Selector="Border#DropZoneBorder">
+            <Setter Property="BorderBrush"
+                    Value="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+          </Style>
+          <Style Selector="Border#DropZoneBorder.drag-over">
+            <Setter Property="BorderBrush"
+                    Value="{DynamicResource SystemAccentColor}" />
+            <Setter Property="Background"
+                    Value="{DynamicResource SystemAccentColorLight3}" />
+          </Style>
+        </Border.Styles>
+
+        <!-- 点線枠の実装: Dash配列はAvaloniaのPen経由 -->
+        <Border.BorderBrush>
+          <SolidColorBrush Color="{DynamicResource SystemBaseMediumLowColor}" />
+        </Border.BorderBrush>
+
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="10">
+
+          <!-- ドロップアイコン（Fluent アイコン代替テキスト）-->
+          <TextBlock Text="📂"
+                     FontSize="40"
+                     HorizontalAlignment="Center"
+                     IsHitTestVisible="False" />
+
+          <TextBlock Text="{DynamicResource Str_Drop_Hint}"
+                     FontSize="14"
+                     TextAlignment="Center"
+                     HorizontalAlignment="Center"
+                     Opacity="0.7"
+                     IsHitTestVisible="False" />
+
+          <!-- ファイルを開くボタン -->
+          <Button Content="{DynamicResource Str_Drop_Browse}"
+                  x:Name="BrowseButton"
+                  HorizontalAlignment="Center"
+                  Padding="16,6"
+                  Margin="0,4,0,0" />
+        </StackPanel>
+      </Border>
+
+      <!-- ────── Row 1: ファイル一覧 ListView ────── -->
+      <Border Grid.Row="1"
+              Margin="20,0,20,8"
+              BorderThickness="1"
+              CornerRadius="8"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+              IsVisible="{Binding HasFiles}">
+
+        <Grid RowDefinitions="Auto,*">
+
+          <!-- ファイル一覧ヘッダー -->
+          <Grid Grid.Row="0"
+                ColumnDefinitions="*,Auto"
+                Margin="12,6">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding InputFiles.Count, StringFormat='{}{0} 件'}"
+                       FontSize="12" Opacity="0.6"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    Content="{DynamicResource Str_Files_Clear}"
+                    Command="{Binding ClearAllFilesCommand}"
+                    Padding="8,2" FontSize="11"
+                    Classes="flat" />
+          </Grid>
+
+          <!-- ファイルリスト -->
+          <ListBox Grid.Row="1"
+                   ItemsSource="{Binding InputFiles}"
+                   SelectedItem="{Binding SelectedFile}"
+                   MaxHeight="200"
+                   BorderThickness="0"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="{x:Type models:InputFileItem}">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,2">
+
+                  <!-- 拡張子バッジ -->
+                  <Border Grid.Column="0"
+                          CornerRadius="4"
+                          Background="{DynamicResource SystemAccentColorLight2}"
+                          Padding="6,2" Margin="0,0,8,0">
+                    <TextBlock Text="{Binding Extension}"
+                               FontSize="11" FontWeight="SemiBold"
+                               Foreground="White" />
+                  </Border>
+
+                  <!-- ファイル名 -->
+                  <TextBlock Grid.Column="1"
+                             Text="{Binding FileName}"
+                             VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis"
+                             FontWeight="Normal" />
+
+                  <!-- サイズ -->
+                  <TextBlock Grid.Column="2"
+                             Text="{Binding SizeText}"
+                             Margin="8,0"
+                             Opacity="0.5"
+                             FontSize="11"
+                             VerticalAlignment="Center" />
+
+                  <!-- 削除ボタン -->
+                  <Button Grid.Column="3"
+                          Content="✕"
+                          Command="{Binding $parent[UserControl].((vm:LocalConvertViewModel)DataContext).RemoveSelectedFileCommand}"
+                          Padding="6,2"
+                          Classes="flat"
+                          VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+        </Grid>
+      </Border>
+
+      <!-- ────── Row 2: 基本設定 + 詳細設定ボタン ────── -->
+      <Grid Grid.Row="2"
+            ColumnDefinitions="*,Auto"
+            Margin="20,0,20,8">
+
+        <!-- 出力設定グループ -->
+        <Grid Grid.Column="0"
+              RowDefinitions="Auto,Auto"
+              ColumnDefinitions="*,Auto,Auto,Auto,Auto"
+>
+
+          <!-- 出力先ディレクトリ -->
+          <TextBlock Grid.Row="0" Grid.Column="0"
+                     Grid.ColumnSpan="5"
+                     Text="{DynamicResource Str_Setting_OutputDir}"
+                     FontSize="12" Opacity="0.7"
+                     Margin="0,0,0,2" />
+
+          <TextBox Grid.Row="1" Grid.Column="0"
+                   Text="{Binding OutputDirectory}"
+                   Watermark="{DynamicResource Str_Setting_OutputDirPlaceholder}"
+                   Margin="0,0,4,0" />
+
+          <Button Grid.Row="1" Grid.Column="1"
+                  Content="{DynamicResource Str_Setting_Browse}"
+                  x:Name="OutputDirBrowseButton"
+                  Padding="10,4"
+                  Margin="0,0,12,0" />
+
+          <!-- 対象端末 -->
+          <TextBlock Grid.Row="0" Grid.Column="2"
+                     Text="{DynamicResource Str_Setting_TargetDevice}"
+                     FontSize="12" Opacity="0.7"
+                     Margin="0,0,0,2" />
+
+          <ComboBox Grid.Row="1" Grid.Column="2"
+                    SelectedIndex="{Binding Settings.ForKindleIndex}"
+                    MinWidth="120"
+                    Margin="0,0,12,0">
+            <ComboBoxItem Content="{DynamicResource Str_Setting_Device_Generic}" />
+            <ComboBoxItem Content="{DynamicResource Str_Setting_Device_Kindle}" />
+          </ComboBox>
+
+          <!-- 入力エンコード -->
+          <TextBlock Grid.Row="0" Grid.Column="3"
+                     Text="{DynamicResource Str_Setting_InputEncoding}"
+                     FontSize="12" Opacity="0.7"
+                     Margin="0,0,0,2" />
+
+          <ComboBox Grid.Row="1" Grid.Column="3"
+                    SelectedItem="{Binding Settings.InputEncoding}"
+                    MinWidth="100">
+            <ComboBoxItem Content="MS932" />
+            <ComboBoxItem Content="UTF-8" />
+          </ComboBox>
+
+        </Grid>
+
+        <!-- 詳細設定を開くボタン -->
+        <Button Grid.Column="1"
+                Content="{DynamicResource Str_Action_AdvancedSettings}"
+                Command="{Binding OpenDrawerCommand}"
+                VerticalAlignment="Bottom"
+                Margin="12,0,0,0"
+                Padding="12,8" />
+
+      </Grid>
+
+      <!-- ────── Row 3: 変換実行ボタン ────── -->
+      <Button Grid.Row="3"
+              Content="{DynamicResource Str_Action_Convert}"
+              Command="{Binding ConvertCommand}"
+              HorizontalAlignment="Stretch"
+              Margin="20,4,20,8"
+              Padding="0,14"
+              FontSize="15"
+              FontWeight="SemiBold"
+              Classes="accent"
+              IsEnabled="{Binding IsIdle}" />
+
+      <!-- ────── Row 4: ステータスバー ────── -->
+      <Border Grid.Row="4"
+              Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+              BorderThickness="0,1,0,0"
+              Padding="12,6">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+
+          <!-- ステータスメッセージ -->
+          <TextBlock Grid.Column="0"
+                     Text="{Binding StatusMessage}"
+                     VerticalAlignment="Center"
+                     FontSize="12" Opacity="0.8" />
+
+          <!-- プログレスバー -->
+          <ProgressBar Grid.Column="1"
+                       Value="{Binding ProgressValue}"
+                       Minimum="0" Maximum="100"
+                       Width="180" Height="6"
+                       Margin="12,0"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding IsConverting}" />
+
+          <!-- キャンセルボタン -->
+          <Button Grid.Column="2"
+                  Content="{DynamicResource Str_Action_Cancel}"
+                  Command="{Binding CancelCommand}"
+                  Padding="8,2" FontSize="11"
+                  IsVisible="{Binding IsConverting}" />
+
+          <!-- ログトグルボタン -->
+          <ToggleButton Grid.Column="3"
+                        Content="{DynamicResource Str_Log_Toggle}"
+                        IsChecked="{Binding IsLogVisible}"
+                        Padding="8,2" FontSize="11"
+                        Margin="4,0,0,0" />
+
+        </Grid>
+      </Border>
+
+      <!-- ────── Row 5: ログエリア（折りたたみ）────── -->
+      <!--
+        IsLogVisible が true の時のみ表示。
+        MaxHeight を Transition でアニメーションすることも可能だが、
+        ここではシンプルに IsVisible で制御する。
+      -->
+      <Border Grid.Row="5"
+              IsVisible="{Binding IsLogVisible}"
+              Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+              BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+              BorderThickness="0,1,0,0"
+              MaxHeight="180">
+        <Grid RowDefinitions="Auto,*">
+
+          <!-- ログヘッダー（クリアボタン）-->
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="8,4">
+            <TextBlock Text="Log" FontSize="11" Opacity="0.5" VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    Content="{DynamicResource Str_Log_Clear}"
+                    Command="{Binding ClearLogCommand}"
+                    Padding="6,1" FontSize="10"
+                    Classes="flat" />
+          </Grid>
+
+          <!-- ログ出力 (ListBox でスクロール可能、最終行に自動スクロール) -->
+          <ListBox Grid.Row="1"
+                   x:Name="LogListBox"
+                   ItemsSource="{Binding LogLines}"
+                   ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                   BorderThickness="0"
+                   FontFamily="Consolas,monospace"
+                   FontSize="11">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding}" TextWrapping="NoWrap" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+        </Grid>
+      </Border>
+
+    </Grid>
+    <!-- ════════════ MainArea 終わり ════════════ -->
+
+
+    <!-- ════════════════════════════════════════════════
+         詳細設定ドロワー（右側からスライドイン オーバーレイ）
+
+         実装メモ:
+         - Grid 単一セル内に MainArea と重ねて配置（ZIndex で最前面）
+         - IsDrawerOpen → DrawerWidth (0 or 520) をアニメーション
+         - ClipToBounds="True" は親 Grid に設定済み（ overflow を clip）
+         - Width=0 の時は ClipToBounds で内容が非表示になる
+         ════════════════════════════════════════════════ -->
+    <Border x:Name="DrawerPanel"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Stretch"
+            Width="{Binding DrawerWidth}"
+            ZIndex="100"
+            ClipToBounds="True"
+            BoxShadow="-4 0 16 0 #40000000"
+            Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="1,0,0,0">
+
+      <!-- Width アニメーション: 0 ↔ 520 を 280ms でスライド -->
+      <Border.Transitions>
+        <Transitions>
+          <DoubleTransition Property="Width"
+                            Duration="0:0:0.28"
+                            Easing="CubicEaseInOut" />
+        </Transitions>
+      </Border.Transitions>
+
+      <!-- ドロワー内コンテンツ: 固定幅 520px -->
+      <Grid Width="520" RowDefinitions="Auto,*">
+
+        <!-- ── ドロワーヘッダー ── -->
+        <Grid Grid.Row="0"
+              ColumnDefinitions="*,Auto"
+              Height="48"
+              Margin="16,0">
+          <TextBlock Grid.Column="0"
+                     Text="{DynamicResource Str_Drawer_Title}"
+                     FontSize="15" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+          <Button Grid.Column="1"
+                  Content="{DynamicResource Str_Action_CloseDrawer}"
+                  Command="{Binding CloseDrawerCommand}"
+                  Padding="10,4" />
+        </Grid>
+
+        <!-- ── 設定タブ ── -->
+        <TabControl Grid.Row="1"
+                    TabStripPlacement="Top"
+                    Padding="0">
+
+          <!-- ════ タブ1: 基本設定 ════ -->
+          <TabItem Header="{DynamicResource Str_Tab_Basic}">
+            <ScrollViewer Padding="16,8">
+              <StackPanel Spacing="4" DataContext="{Binding Settings}">
+
+                <!-- ◆ 入力セクション -->
+                <TextBlock Text="{DynamicResource Str_Group_Input}"
+                           FontWeight="SemiBold" FontSize="13"
+                           Margin="0,8,0,4" />
+
+                <!-- 入力エンコード -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                  <TextBlock Text="{DynamicResource Str_Setting_InputEncoding}"
+                             VerticalAlignment="Center" FontSize="13" />
+                  <ComboBox Grid.Column="1"
+                            SelectedItem="{Binding InputEncoding}"
+                            MinWidth="100">
+                    <ComboBoxItem Content="MS932" />
+                    <ComboBoxItem Content="UTF-8" />
+                  </ComboBox>
+                </Grid>
+
+                <!-- ファイル名から表題・著者 -->
+                <CheckBox Content="{DynamicResource Str_Setting_UseFileName}"
+                          IsChecked="{Binding UseFileName}"
+                          Margin="0,2" />
+
+                <!-- ◆ 出力セクション -->
+                <TextBlock Text="{DynamicResource Str_Group_Output}"
+                           FontWeight="SemiBold" FontSize="13"
+                           Margin="0,12,0,4" />
+
+                <!-- 出力拡張子 -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                  <TextBlock Text="{DynamicResource Str_Setting_OutputExtension}"
+                             VerticalAlignment="Center" FontSize="13" />
+                  <ComboBox Grid.Column="1"
+                            SelectedItem="{Binding OutputExtension}"
+                            MinWidth="140">
+                    <ComboBoxItem Content=".epub" />
+                    <ComboBoxItem Content=".kepub.epub" />
+                  </ComboBox>
+                </Grid>
+
+                <!-- 入力ファイル名で出力 -->
+                <CheckBox Content="{DynamicResource Str_Setting_UseInputFileName}"
+                          IsChecked="{Binding UseInputFileName}"
+                          Margin="0,2" />
+
+                <!-- ◆ 書誌情報セクション -->
+                <TextBlock Text="{DynamicResource Str_Group_Bibliography}"
+                           FontWeight="SemiBold" FontSize="13"
+                           Margin="0,12,0,4" />
+
+                <!-- 表題種別 -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                  <TextBlock Text="{DynamicResource Str_Setting_TitleType}"
+                             VerticalAlignment="Center" FontSize="13" />
+                  <ComboBox Grid.Column="1"
+                            SelectedIndex="{Binding TitleType}"
+                            MinWidth="200">
+                    <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_0}" />
+                    <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_1}" />
+                    <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_2}" />
+                    <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_3}" />
+                    <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_4}" />
+                  </ComboBox>
+                </Grid>
+
+                <!-- 表紙画像 -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                  <TextBlock Text="{DynamicResource Str_Setting_CoverImage}"
+                             VerticalAlignment="Center" FontSize="13" />
+                  <ComboBox Grid.Column="1"
+                            SelectedIndex="{Binding CoverImageType}"
+                            MinWidth="180">
+                    <ComboBoxItem Content="{DynamicResource Str_Setting_CoverImage_None}" />
+                    <ComboBoxItem Content="{DynamicResource Str_Setting_CoverImage_First}" />
+                    <ComboBoxItem Content="{DynamicResource Str_Setting_CoverImage_SameName}" />
+                    <ComboBoxItem Content="{DynamicResource Str_Setting_CoverImage_File}" />
+                  </ComboBox>
+                </Grid>
+
+                <!-- 表紙ファイルパス（CoverImageType==3 の時のみ有効） -->
+                <Grid ColumnDefinitions="*,Auto"
+                      IsEnabled="{Binding IsCoverFileEnabled}"
+                      Margin="16,0,0,2">
+                  <TextBox Text="{Binding CoverImagePath}"
+                           Watermark="画像ファイルのパス..." />
+                  <Button Grid.Column="1"
+                          Content="{DynamicResource Str_Setting_Browse}"
+                          x:Name="CoverImageBrowseButton"
+                          Padding="8,4" Margin="4,0,0,0" />
+                </Grid>
+
+                <!-- 表紙ページ挿入・目次 -->
+                <CheckBox Content="{DynamicResource Str_Setting_InsertCoverPage}"
+                          IsChecked="{Binding InsertCoverPage}"
+                          Margin="0,2" />
+                <CheckBox Content="{DynamicResource Str_Setting_InsertCoverPageToc}"
+                          IsChecked="{Binding InsertCoverPageToc}"
+                          IsEnabled="{Binding InsertCoverPage}"
+                          Margin="16,0,0,2" />
+
+                <!-- ◆ ページ構成セクション -->
+                <TextBlock Text="{DynamicResource Str_Group_Layout}"
+                           FontWeight="SemiBold" FontSize="13"
+                           Margin="0,12,0,4" />
+
+                <!-- 縦書き / 横書き -->
+                <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,2">
+                  <RadioButton Content="{DynamicResource Str_Setting_Vertical}"
+                               IsChecked="{Binding Vertical}" />
+                  <RadioButton Content="{DynamicResource Str_Setting_Horizontal}"
+                               IsChecked="{Binding !Vertical}" />
+                </StackPanel>
+
+                <!-- 目次ページ挿入 -->
+                <CheckBox Content="{DynamicResource Str_Setting_InsertTocPage}"
+                          IsChecked="{Binding InsertTocPage}"
+                          Margin="0,2" />
+                <CheckBox Content="{DynamicResource Str_Setting_TocVertical}"
+                          IsChecked="{Binding TocVertical}"
+                          IsEnabled="{Binding InsertTocPage}"
+                          Margin="16,0,0,2" />
+
+                <!-- 表題を目次に含める -->
+                <CheckBox Content="{DynamicResource Str_Setting_InsertTitleToc}"
+                          IsChecked="{Binding InsertTitleToc}"
+                          Margin="0,2" />
+
+                <!-- 表題ページ出力 -->
+                <CheckBox Content="{DynamicResource Str_Setting_TitlePageWrite}"
+                          IsChecked="{Binding TitlePageWrite}"
+                          Margin="0,2" />
+                <Grid ColumnDefinitions="*,Auto"
+                      IsEnabled="{Binding TitlePageWrite}"
+                      Margin="16,0,0,2">
+                  <TextBlock Text="{DynamicResource Str_Setting_TitlePageType}"
+                             VerticalAlignment="Center" FontSize="13" />
+                  <ComboBox Grid.Column="1" SelectedIndex="{Binding TitlePageType}"
+                            MinWidth="140">
+                    <ComboBoxItem Content="通常" />
+                    <ComboBoxItem Content="中央揃え" />
+                    <ComboBoxItem Content="横書き" />
+                  </ComboBox>
+                </Grid>
+
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+
+          <!-- ════ タブ2: 文字・変換 ════ -->
+          <TabItem Header="{DynamicResource Str_Tab_CharConvert}">
+            <ScrollViewer Padding="16,8">
+              <StackPanel Spacing="4" DataContext="{Binding Settings}">
+
+                <CheckBox Content="{DynamicResource Str_Setting_NoIllust}"
+                          IsChecked="{Binding NoIllust}" Margin="0,2" />
+
+                <!-- 自動横組み（縦中横）グループ -->
+                <CheckBox Content="{DynamicResource Str_Setting_AutoYoko}"
+                          IsChecked="{Binding AutoYoko}" Margin="0,8,0,2" />
+                <StackPanel IsEnabled="{Binding AutoYoko}" Margin="16,0,0,0" Spacing="2">
+                  <CheckBox Content="{DynamicResource Str_Setting_AutoYokoNum1}"
+                            IsChecked="{Binding AutoYokoNum1}" />
+                  <CheckBox Content="{DynamicResource Str_Setting_AutoYokoNum3}"
+                            IsChecked="{Binding AutoYokoNum3}" />
+                  <CheckBox Content="{DynamicResource Str_Setting_AutoYokoEQ1}"
+                            IsChecked="{Binding AutoYokoEQ1}" />
+                </StackPanel>
+
+                <!-- 濁点種別 -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,2">
+                  <TextBlock Text="{DynamicResource Str_Setting_DakutenType}"
+                             VerticalAlignment="Center" FontSize="13" />
+                  <ComboBox Grid.Column="1" SelectedIndex="{Binding DakutenType}"
+                            MinWidth="160">
+                    <ComboBoxItem Content="0: なし" />
+                    <ComboBoxItem Content="1: CSSスタイル" />
+                    <ComboBoxItem Content="2: 外字フォント" />
+                  </ComboBox>
+                </Grid>
+
+                <!-- 空行削除 -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,2">
+                  <TextBlock Text="{DynamicResource Str_Setting_RemoveEmptyLine}"
+                             VerticalAlignment="Center" FontSize="13" />
+                  <ComboBox Grid.Column="1" SelectedIndex="{Binding RemoveEmptyLine}"
+                            MinWidth="160">
+                    <ComboBoxItem Content="0: しない" />
+                    <ComboBoxItem Content="1: 1行に集約" />
+                    <ComboBoxItem Content="2: すべて削除" />
+                  </ComboBox>
+                </Grid>
+
+                <!-- 最大空行数 -->
+                <Grid ColumnDefinitions="*,Auto"
+                      IsEnabled="{Binding IsMaxEmptyLineEnabled}"
+                      Margin="0,2">
+                  <TextBlock Text="{DynamicResource Str_Setting_MaxEmptyLine}"
+                             VerticalAlignment="Center" FontSize="13" />
+                  <NumericUpDown Grid.Column="1"
+                                 Value="{Binding MaxEmptyLine}"
+                                 Minimum="0" Maximum="99"
+                                 Width="100" />
+                </Grid>
+
+                <!-- コメント出力 / 変換 -->
+                <CheckBox Content="コメント出力"
+                          IsChecked="{Binding CommentPrint}" Margin="0,8,0,2" />
+                <CheckBox Content="コメント変換"
+                          IsChecked="{Binding CommentConvert}"
+                          IsEnabled="{Binding CommentPrint}" Margin="16,0,0,2" />
+
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+
+          <!-- ════ タブ3: 章認識 ════ -->
+          <TabItem Header="{DynamicResource Str_Tab_Chapter}">
+            <ScrollViewer Padding="16,8">
+              <StackPanel Spacing="4" DataContext="{Binding Settings}">
+
+                <!-- 章名最大文字数 -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,2">
+                  <TextBlock Text="{DynamicResource Str_Setting_ChapterNameLength}"
+                             VerticalAlignment="Center" FontSize="13" />
+                  <NumericUpDown Grid.Column="1"
+                                 Value="{Binding ChapterNameMaxLength}"
+                                 Minimum="1" Maximum="256"
+                                 Width="100" />
+                </Grid>
+
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterExclude}"
+                          IsChecked="{Binding ExcludeSequentialChapter}" Margin="0,2" />
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterUseNextLine}"
+                          IsChecked="{Binding UseNextLineChapterName}" Margin="0,2" />
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterSection}"
+                          IsChecked="{Binding ChapterSection}" Margin="0,2" />
+
+                <!-- 見出し注記グループ -->
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterH}"
+                          IsChecked="{Binding ChapterH}" Margin="0,8,0,2" />
+                <StackPanel IsEnabled="{Binding IsChapterHEnabled}"
+                            Margin="16,0,0,0" Spacing="2">
+                  <CheckBox Content="{DynamicResource Str_Setting_ChapterH1}"
+                            IsChecked="{Binding ChapterH1}" />
+                  <CheckBox Content="{DynamicResource Str_Setting_ChapterH2}"
+                            IsChecked="{Binding ChapterH2}" />
+                  <CheckBox Content="{DynamicResource Str_Setting_ChapterH3}"
+                            IsChecked="{Binding ChapterH3}" />
+                </StackPanel>
+
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterName}"
+                          IsChecked="{Binding ChapterName}" Margin="0,8,0,2" />
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterNumOnly}"
+                          IsChecked="{Binding ChapterNumOnly}" Margin="0,2" />
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterNumTitle}"
+                          IsChecked="{Binding ChapterNumTitle}" Margin="0,2" />
+
+                <!-- カスタム章パターン -->
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterPattern}"
+                          IsChecked="{Binding ChapterPattern}" Margin="0,8,0,2" />
+                <StackPanel IsEnabled="{Binding IsChapterPatternEnabled}" Margin="16,0,0,0">
+                  <TextBlock Text="{DynamicResource Str_Setting_ChapterPatternText}"
+                             FontSize="12" Opacity="0.7" Margin="0,0,0,2" />
+                  <TextBox Text="{Binding ChapterPatternText}"
+                           Watermark="正規表現パターン..." />
+                </StackPanel>
+
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+
+          <!-- ════ タブ4: 改ページ ════ -->
+          <TabItem Header="{DynamicResource Str_Tab_PageBreak}">
+            <ScrollViewer Padding="16,8">
+              <StackPanel Spacing="4" DataContext="{Binding Settings}">
+
+                <!-- 強制改ページ（親スイッチ）-->
+                <CheckBox Content="{DynamicResource Str_Setting_PageBreak}"
+                          IsChecked="{Binding PageBreak}" Margin="0,4,0,8" />
+
+                <StackPanel IsEnabled="{Binding IsPageBreakEnabled}" Spacing="4">
+
+                  <!-- 強制改ページサイズ -->
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                    <TextBlock Text="{DynamicResource Str_Setting_PageBreakSize}"
+                               VerticalAlignment="Center" FontSize="13" />
+                    <NumericUpDown Grid.Column="1"
+                                   Value="{Binding PageBreakSize}"
+                                   Minimum="0" Maximum="9999"
+                                   Width="120" />
+                  </Grid>
+
+                  <!-- 空行での改ページ -->
+                  <CheckBox Content="{DynamicResource Str_Setting_PageBreakEmpty}"
+                            IsChecked="{Binding PageBreakEmpty}" Margin="0,8,0,2" />
+
+                  <StackPanel IsEnabled="{Binding IsPageBreakEmptyEnabled}"
+                              Margin="16,0,0,0" Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                      <TextBlock Text="{DynamicResource Str_Setting_PageBreakEmptyLine}"
+                                 VerticalAlignment="Center" FontSize="13" />
+                      <NumericUpDown Grid.Column="1"
+                                     Value="{Binding PageBreakEmptyLine}"
+                                     Minimum="0" Maximum="99"
+                                     Width="100" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                      <TextBlock Text="{DynamicResource Str_Setting_PageBreakEmptySize}"
+                                 VerticalAlignment="Center" FontSize="13" />
+                      <NumericUpDown Grid.Column="1"
+                                     Value="{Binding PageBreakEmptySize}"
+                                     Minimum="0" Maximum="9999"
+                                     Width="120" />
+                    </Grid>
+                  </StackPanel>
+
+                  <!-- 章での改ページ -->
+                  <CheckBox Content="{DynamicResource Str_Setting_PageBreakChapter}"
+                            IsChecked="{Binding PageBreakChapter}" Margin="0,8,0,2" />
+
+                  <Grid ColumnDefinitions="*,Auto"
+                        IsEnabled="{Binding IsPageBreakChapterEnabled}"
+                        Margin="16,0,0,2">
+                    <TextBlock Text="{DynamicResource Str_Setting_PageBreakChapterSize}"
+                               VerticalAlignment="Center" FontSize="13" />
+                    <NumericUpDown Grid.Column="1"
+                                   Value="{Binding PageBreakChapterSize}"
+                                   Minimum="0" Maximum="9999"
+                                   Width="120" />
+                  </Grid>
+
+                </StackPanel>
+
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+
+        </TabControl>
+
+      </Grid>
+      <!-- ドロワー内コンテンツ終わり -->
+
+    </Border>
+    <!-- ════════════ DrawerPanel 終わり ════════════ -->
+
+  </Grid>
+  <!-- ════════════ 最外 Grid 終わり ════════════ -->
+
+</UserControl>

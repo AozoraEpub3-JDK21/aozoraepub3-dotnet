@@ -1,0 +1,38 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AozoraEpub3.Gui.ViewModels"
+             xmlns:views="using:AozoraEpub3.Gui.Views"
+             x:Class="AozoraEpub3.Gui.App"
+             RequestedThemeVariant="Default">
+
+  <Application.Styles>
+    <FluentTheme />
+  </Application.Styles>
+
+  <!-- ===== i18n: 初期ロード（日本語） ===== -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://AozoraEpub3.Gui/Assets/Strings.ja.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <!--
+    ===== SPA ルーティング用 DataTemplates =====
+    ContentControl が ViewModel を受け取ると、
+    DataType が一致するテンプレートの View が自動的に生成・配置される。
+  -->
+  <Application.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:LocalConvertViewModel}">
+      <views:LocalConvertView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:WebConvertViewModel}">
+      <views:WebConvertView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:SettingsPageViewModel}">
+      <views:SettingsPageView />
+    </DataTemplate>
+  </Application.DataTemplates>
+
+</Application>

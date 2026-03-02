@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/AozoraEpub3.Cli/AozoraEpub3.Cli.csproj" />
     <Project Path="src/AozoraEpub3.Core/AozoraEpub3.Core.csproj" />
+    <Project Path="src/AozoraEpub3.Gui/AozoraEpub3.Gui.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AozoraEpub3.Tests/AozoraEpub3.Tests.csproj" />

@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AozoraEpub3.Gui.ViewModels"
+             x:Class="AozoraEpub3.Gui.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+  <StackPanel Margin="32,24" MaxWidth="480" Spacing="20">
+
+    <!-- タイトル -->
+    <TextBlock Text="{DynamicResource Str_SettingsPage_Title}"
+               FontSize="20" FontWeight="SemiBold" />
+
+    <!-- 言語 -->
+    <StackPanel Spacing="8">
+      <TextBlock Text="{DynamicResource Str_SettingsPage_Language}"
+                 FontWeight="SemiBold" FontSize="14" />
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <RadioButton Content="日本語"
+                     IsChecked="{Binding SelectedLanguage,
+                                 Converter={x:Static StringConverters.IsNullOrEmpty},
+                                 ConverterParameter=ja}" />
+        <RadioButton Content="English"
+                     IsChecked="{Binding SelectedLanguage,
+                                 Converter={x:Static StringConverters.IsNullOrEmpty},
+                                 ConverterParameter=en}" />
+      </StackPanel>
+    </StackPanel>
+
+    <!-- テーマ -->
+    <StackPanel Spacing="8">
+      <TextBlock Text="{DynamicResource Str_SettingsPage_Theme}"
+                 FontWeight="SemiBold" FontSize="14" />
+      <ComboBox SelectedItem="{Binding SelectedTheme}" MinWidth="200">
+        <ComboBoxItem Content="{DynamicResource Str_SettingsPage_Theme_Default}"
+                      Tag="default" />
+        <ComboBoxItem Content="{DynamicResource Str_SettingsPage_Theme_Light}"
+                      Tag="light" />
+        <ComboBoxItem Content="{DynamicResource Str_SettingsPage_Theme_Dark}"
+                      Tag="dark" />
+      </ComboBox>
+    </StackPanel>
+
+  </StackPanel>
+</UserControl>

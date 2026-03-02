@@ -1,0 +1,148 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+  <!-- ===== ナビゲーション ===== -->
+  <sys:String x:Key="Str_Nav_LocalConvert">ローカル変換</sys:String>
+  <sys:String x:Key="Str_Nav_WebConvert">Web 変換</sys:String>
+  <sys:String x:Key="Str_Nav_Settings">設定</sys:String>
+
+  <!-- ===== ヘッダー ===== -->
+  <sys:String x:Key="Str_App_Title">AozoraEpub3 .NET</sys:String>
+  <sys:String x:Key="Str_Lang_Ja">日</sys:String>
+  <sys:String x:Key="Str_Lang_En">EN</sys:String>
+
+  <!-- ===== ドロップゾーン ===== -->
+  <sys:String x:Key="Str_Drop_Hint">ここにファイルをドロップ&#x0a;.txt / .zip / .rar に対応</sys:String>
+  <sys:String x:Key="Str_Drop_Browse">ファイルを開く...</sys:String>
+  <sys:String x:Key="Str_Drop_DragOver">ファイルをドロップしてください</sys:String>
+
+  <!-- ===== ファイル一覧 ===== -->
+  <sys:String x:Key="Str_Files_Empty">ファイルが追加されていません</sys:String>
+  <sys:String x:Key="Str_Files_Remove">削除</sys:String>
+  <sys:String x:Key="Str_Files_Clear">すべて削除</sys:String>
+  <sys:String x:Key="Str_Files_Count">{0} 件のファイル</sys:String>
+
+  <!-- ===== 基本設定 ===== -->
+  <sys:String x:Key="Str_Setting_OutputDir">出力先ディレクトリ</sys:String>
+  <sys:String x:Key="Str_Setting_OutputDirPlaceholder">（入力ファイルと同じ場所）</sys:String>
+  <sys:String x:Key="Str_Setting_Browse">参照...</sys:String>
+  <sys:String x:Key="Str_Setting_TargetDevice">対象端末</sys:String>
+  <sys:String x:Key="Str_Setting_Device_Generic">汎用</sys:String>
+  <sys:String x:Key="Str_Setting_Device_Kindle">Kindle</sys:String>
+  <sys:String x:Key="Str_Setting_InputEncoding">入力エンコード</sys:String>
+
+  <!-- ===== アクション ===== -->
+  <sys:String x:Key="Str_Action_Convert">変換実行</sys:String>
+  <sys:String x:Key="Str_Action_Cancel">キャンセル</sys:String>
+  <sys:String x:Key="Str_Action_OpenFolder">出力フォルダを開く</sys:String>
+  <sys:String x:Key="Str_Action_AdvancedSettings">詳細設定を開く</sys:String>
+  <sys:String x:Key="Str_Action_CloseDrawer">閉じる</sys:String>
+
+  <!-- ===== 進捗・ステータス ===== -->
+  <sys:String x:Key="Str_Status_Ready">準備完了</sys:String>
+  <sys:String x:Key="Str_Status_Converting">変換中...</sys:String>
+  <sys:String x:Key="Str_Status_Done">変換完了</sys:String>
+  <sys:String x:Key="Str_Status_Error">エラーが発生しました</sys:String>
+  <sys:String x:Key="Str_Status_Cancelled">キャンセルされました</sys:String>
+
+  <!-- ===== ログエリア ===== -->
+  <sys:String x:Key="Str_Log_Toggle">ログを表示</sys:String>
+  <sys:String x:Key="Str_Log_Hide">ログを隠す</sys:String>
+  <sys:String x:Key="Str_Log_Clear">ログをクリア</sys:String>
+
+  <!-- ===== 詳細設定ドロワー タブ ===== -->
+  <sys:String x:Key="Str_Drawer_Title">詳細設定</sys:String>
+  <sys:String x:Key="Str_Tab_Basic">基本設定</sys:String>
+  <sys:String x:Key="Str_Tab_CharConvert">文字・変換</sys:String>
+  <sys:String x:Key="Str_Tab_Chapter">章認識</sys:String>
+  <sys:String x:Key="Str_Tab_PageBreak">改ページ</sys:String>
+
+  <!-- ===== 基本設定タブ 小見出し ===== -->
+  <sys:String x:Key="Str_Group_Input">入力</sys:String>
+  <sys:String x:Key="Str_Group_Output">出力</sys:String>
+  <sys:String x:Key="Str_Group_Bibliography">書誌情報</sys:String>
+  <sys:String x:Key="Str_Group_Layout">ページ構成</sys:String>
+
+  <!-- ===== 入力設定 ===== -->
+  <sys:String x:Key="Str_Setting_UseFileName">ファイル名から表題・著者を使用</sys:String>
+
+  <!-- ===== 出力設定 ===== -->
+  <sys:String x:Key="Str_Setting_OutputExtension">出力拡張子</sys:String>
+  <sys:String x:Key="Str_Setting_UseInputFileName">入力ファイル名で出力</sys:String>
+
+  <!-- ===== 書誌情報設定 ===== -->
+  <sys:String x:Key="Str_Setting_TitleType">表題種別</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_0">表題→著者名</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_1">著者名→表題</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_2">表題→著者名（副題優先）</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_3">表題のみ</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_4">なし</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage">表紙画像</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage_None">指定なし</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage_First">先頭の挿絵</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage_SameName">同名画像ファイル</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage_File">ファイル指定</sys:String>
+  <sys:String x:Key="Str_Setting_InsertCoverPage">表紙ページ挿入</sys:String>
+  <sys:String x:Key="Str_Setting_InsertCoverPageToc">表紙ページを目次に含める</sys:String>
+  <sys:String x:Key="Str_Setting_MaxCoverLine">表紙最大行数</sys:String>
+
+  <!-- ===== ページ構成設定 ===== -->
+  <sys:String x:Key="Str_Setting_Vertical">縦書き</sys:String>
+  <sys:String x:Key="Str_Setting_Horizontal">横書き</sys:String>
+  <sys:String x:Key="Str_Setting_InsertTocPage">目次ページ挿入</sys:String>
+  <sys:String x:Key="Str_Setting_TocVertical">目次縦書き</sys:String>
+  <sys:String x:Key="Str_Setting_InsertTitleToc">表題を目次に含める</sys:String>
+  <sys:String x:Key="Str_Setting_TitlePageWrite">表題ページ出力</sys:String>
+  <sys:String x:Key="Str_Setting_TitlePageType">表題ページ種別</sys:String>
+
+  <!-- ===== 文字・変換設定 ===== -->
+  <sys:String x:Key="Str_Setting_NoIllust">挿絵なし</sys:String>
+  <sys:String x:Key="Str_Setting_AutoYoko">自動横組み</sys:String>
+  <sys:String x:Key="Str_Setting_AutoYokoNum1">　数字1桁 自動横組み</sys:String>
+  <sys:String x:Key="Str_Setting_AutoYokoNum3">　数字3桁 自動横組み</sys:String>
+  <sys:String x:Key="Str_Setting_AutoYokoEQ1">　英数字1桁 自動横組み</sys:String>
+  <sys:String x:Key="Str_Setting_DakutenType">濁点種別</sys:String>
+  <sys:String x:Key="Str_Setting_RemoveEmptyLine">空行削除</sys:String>
+  <sys:String x:Key="Str_Setting_MaxEmptyLine">最大空行数</sys:String>
+
+  <!-- ===== 章認識設定 ===== -->
+  <sys:String x:Key="Str_Setting_ChapterNameLength">章名最大文字数</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterExclude">連続章除外</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterUseNextLine">次行を章名に使用</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterSection">節を章として認識</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterH">見出し注記を章として認識</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterH1">　大見出し (H1)</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterH2">　中見出し (H2)</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterH3">　小見出し (H3)</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterName">章名キーワード認識</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterNumOnly">数字のみの章認識</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterNumTitle">数字＋タイトル章認識</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterPattern">カスタム章パターン使用</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterPatternText">カスタム章パターン（正規表現）</sys:String>
+
+  <!-- ===== 改ページ設定 ===== -->
+  <sys:String x:Key="Str_Setting_PageBreak">強制改ページ有効</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakSize">強制改ページサイズ (KB)</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakEmpty">空行での改ページ</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakEmptyLine">空行改ページ行数</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakEmptySize">空行改ページサイズ (KB)</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakChapter">章での改ページ</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakChapterSize">章改ページサイズ (KB)</sys:String>
+
+  <!-- ===== Web変換画面 ===== -->
+  <sys:String x:Key="Str_Web_UrlLabel">変換URL</sys:String>
+  <sys:String x:Key="Str_Web_UrlPlaceholder">https://ncode.syosetu.com/...</sys:String>
+  <sys:String x:Key="Str_Web_Interval">ダウンロード間隔 (ms)</sys:String>
+  <sys:String x:Key="Str_Web_WebConfigDir">web設定ディレクトリ</sys:String>
+  <sys:String x:Key="Str_Web_Convert">Web変換実行</sys:String>
+
+  <!-- ===== 設定画面 ===== -->
+  <sys:String x:Key="Str_SettingsPage_Title">アプリ設定</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Language">表示言語</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Theme">テーマ</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Theme_Default">システム設定に従う</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Theme_Light">ライト</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Theme_Dark">ダーク</sys:String>
+
+</ResourceDictionary>

@@ -1,0 +1,148 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+  <!-- ===== Navigation ===== -->
+  <sys:String x:Key="Str_Nav_LocalConvert">Local Convert</sys:String>
+  <sys:String x:Key="Str_Nav_WebConvert">Web Convert</sys:String>
+  <sys:String x:Key="Str_Nav_Settings">Settings</sys:String>
+
+  <!-- ===== Header ===== -->
+  <sys:String x:Key="Str_App_Title">AozoraEpub3 .NET</sys:String>
+  <sys:String x:Key="Str_Lang_Ja">日</sys:String>
+  <sys:String x:Key="Str_Lang_En">EN</sys:String>
+
+  <!-- ===== Drop Zone ===== -->
+  <sys:String x:Key="Str_Drop_Hint">Drop files here&#x0a;Supports .txt / .zip / .rar</sys:String>
+  <sys:String x:Key="Str_Drop_Browse">Browse files...</sys:String>
+  <sys:String x:Key="Str_Drop_DragOver">Drop files to add</sys:String>
+
+  <!-- ===== File List ===== -->
+  <sys:String x:Key="Str_Files_Empty">No files added</sys:String>
+  <sys:String x:Key="Str_Files_Remove">Remove</sys:String>
+  <sys:String x:Key="Str_Files_Clear">Clear All</sys:String>
+  <sys:String x:Key="Str_Files_Count">{0} file(s)</sys:String>
+
+  <!-- ===== Basic Settings ===== -->
+  <sys:String x:Key="Str_Setting_OutputDir">Output Directory</sys:String>
+  <sys:String x:Key="Str_Setting_OutputDirPlaceholder">(Same as input file)</sys:String>
+  <sys:String x:Key="Str_Setting_Browse">Browse...</sys:String>
+  <sys:String x:Key="Str_Setting_TargetDevice">Target Device</sys:String>
+  <sys:String x:Key="Str_Setting_Device_Generic">Generic</sys:String>
+  <sys:String x:Key="Str_Setting_Device_Kindle">Kindle</sys:String>
+  <sys:String x:Key="Str_Setting_InputEncoding">Input Encoding</sys:String>
+
+  <!-- ===== Actions ===== -->
+  <sys:String x:Key="Str_Action_Convert">Convert</sys:String>
+  <sys:String x:Key="Str_Action_Cancel">Cancel</sys:String>
+  <sys:String x:Key="Str_Action_OpenFolder">Open Output Folder</sys:String>
+  <sys:String x:Key="Str_Action_AdvancedSettings">Advanced Settings</sys:String>
+  <sys:String x:Key="Str_Action_CloseDrawer">Close</sys:String>
+
+  <!-- ===== Progress / Status ===== -->
+  <sys:String x:Key="Str_Status_Ready">Ready</sys:String>
+  <sys:String x:Key="Str_Status_Converting">Converting...</sys:String>
+  <sys:String x:Key="Str_Status_Done">Conversion complete</sys:String>
+  <sys:String x:Key="Str_Status_Error">An error occurred</sys:String>
+  <sys:String x:Key="Str_Status_Cancelled">Cancelled</sys:String>
+
+  <!-- ===== Log Area ===== -->
+  <sys:String x:Key="Str_Log_Toggle">Show Log</sys:String>
+  <sys:String x:Key="Str_Log_Hide">Hide Log</sys:String>
+  <sys:String x:Key="Str_Log_Clear">Clear Log</sys:String>
+
+  <!-- ===== Advanced Settings Drawer Tabs ===== -->
+  <sys:String x:Key="Str_Drawer_Title">Advanced Settings</sys:String>
+  <sys:String x:Key="Str_Tab_Basic">Basic</sys:String>
+  <sys:String x:Key="Str_Tab_CharConvert">Characters</sys:String>
+  <sys:String x:Key="Str_Tab_Chapter">Chapters</sys:String>
+  <sys:String x:Key="Str_Tab_PageBreak">Page Breaks</sys:String>
+
+  <!-- ===== Section Headings ===== -->
+  <sys:String x:Key="Str_Group_Input">Input</sys:String>
+  <sys:String x:Key="Str_Group_Output">Output</sys:String>
+  <sys:String x:Key="Str_Group_Bibliography">Metadata</sys:String>
+  <sys:String x:Key="Str_Group_Layout">Layout</sys:String>
+
+  <!-- ===== Input Settings ===== -->
+  <sys:String x:Key="Str_Setting_UseFileName">Use filename for title/author</sys:String>
+
+  <!-- ===== Output Settings ===== -->
+  <sys:String x:Key="Str_Setting_OutputExtension">Output Extension</sys:String>
+  <sys:String x:Key="Str_Setting_UseInputFileName">Use input filename for output</sys:String>
+
+  <!-- ===== Bibliography Settings ===== -->
+  <sys:String x:Key="Str_Setting_TitleType">Title Format</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_0">Title → Author</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_1">Author → Title</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_2">Title → Author (subtitle priority)</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_3">Title only</sys:String>
+  <sys:String x:Key="Str_Setting_TitleType_4">None</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage">Cover Image</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage_None">None</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage_First">First illustration</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage_SameName">Same-name image file</sys:String>
+  <sys:String x:Key="Str_Setting_CoverImage_File">Specify file</sys:String>
+  <sys:String x:Key="Str_Setting_InsertCoverPage">Insert cover page</sys:String>
+  <sys:String x:Key="Str_Setting_InsertCoverPageToc">Include cover page in TOC</sys:String>
+  <sys:String x:Key="Str_Setting_MaxCoverLine">Max cover search lines</sys:String>
+
+  <!-- ===== Layout Settings ===== -->
+  <sys:String x:Key="Str_Setting_Vertical">Vertical (tategumi)</sys:String>
+  <sys:String x:Key="Str_Setting_Horizontal">Horizontal (yokogumi)</sys:String>
+  <sys:String x:Key="Str_Setting_InsertTocPage">Insert TOC page</sys:String>
+  <sys:String x:Key="Str_Setting_TocVertical">Vertical TOC page</sys:String>
+  <sys:String x:Key="Str_Setting_InsertTitleToc">Include title in TOC</sys:String>
+  <sys:String x:Key="Str_Setting_TitlePageWrite">Output title page</sys:String>
+  <sys:String x:Key="Str_Setting_TitlePageType">Title page style</sys:String>
+
+  <!-- ===== Character/Conversion Settings ===== -->
+  <sys:String x:Key="Str_Setting_NoIllust">No illustrations</sys:String>
+  <sys:String x:Key="Str_Setting_AutoYoko">Auto tate-chu-yoko</sys:String>
+  <sys:String x:Key="Str_Setting_AutoYokoNum1">　Single digit numbers</sys:String>
+  <sys:String x:Key="Str_Setting_AutoYokoNum3">　Three-digit numbers</sys:String>
+  <sys:String x:Key="Str_Setting_AutoYokoEQ1">　Single alphanumeric</sys:String>
+  <sys:String x:Key="Str_Setting_DakutenType">Dakuten rendering</sys:String>
+  <sys:String x:Key="Str_Setting_RemoveEmptyLine">Remove empty lines</sys:String>
+  <sys:String x:Key="Str_Setting_MaxEmptyLine">Max empty lines</sys:String>
+
+  <!-- ===== Chapter Recognition ===== -->
+  <sys:String x:Key="Str_Setting_ChapterNameLength">Max chapter name length</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterExclude">Exclude sequential chapters</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterUseNextLine">Use next line as chapter name</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterSection">Sections as chapters</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterH">Heading marks as chapters</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterH1">　H1 (large heading)</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterH2">　H2 (medium heading)</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterH3">　H3 (small heading)</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterName">Keyword-based chapter recognition</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterNumOnly">Numbers-only chapter lines</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterNumTitle">Number + title lines</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterPattern">Custom chapter pattern</sys:String>
+  <sys:String x:Key="Str_Setting_ChapterPatternText">Custom pattern (regex)</sys:String>
+
+  <!-- ===== Page Break Settings ===== -->
+  <sys:String x:Key="Str_Setting_PageBreak">Enable forced page breaks</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakSize">Break at size (KB)</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakEmpty">Break on empty lines</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakEmptyLine">Min empty lines for break</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakEmptySize">Min size for empty-line break (KB)</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakChapter">Break on chapters</sys:String>
+  <sys:String x:Key="Str_Setting_PageBreakChapterSize">Min size for chapter break (KB)</sys:String>
+
+  <!-- ===== Web Convert View ===== -->
+  <sys:String x:Key="Str_Web_UrlLabel">URL</sys:String>
+  <sys:String x:Key="Str_Web_UrlPlaceholder">https://ncode.syosetu.com/...</sys:String>
+  <sys:String x:Key="Str_Web_Interval">Download interval (ms)</sys:String>
+  <sys:String x:Key="Str_Web_WebConfigDir">Web config directory</sys:String>
+  <sys:String x:Key="Str_Web_Convert">Start Web Convert</sys:String>
+
+  <!-- ===== Settings Page ===== -->
+  <sys:String x:Key="Str_SettingsPage_Title">Application Settings</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Language">Display Language</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Theme">Theme</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Theme_Default">System default</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Theme_Light">Light</sys:String>
+  <sys:String x:Key="Str_SettingsPage_Theme_Dark">Dark</sys:String>
+
+</ResourceDictionary>
