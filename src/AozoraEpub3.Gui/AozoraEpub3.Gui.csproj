@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>AozoraEpub3.Gui</RootNamespace>
     <AssemblyName>AozoraEpub3.Gui</AssemblyName>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <!-- Compiled bindings: opt-in per-file via x:CompileBindings="True" -->
     <AvaloniaUseCompiledBindings>false</AvaloniaUseCompiledBindings>
   </PropertyGroup>
