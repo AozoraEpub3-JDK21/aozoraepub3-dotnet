@@ -7,6 +7,7 @@ namespace AozoraEpub3.Gui.ViewModels;
 /// <summary>
 /// Shell（メインウィンドウ）の ViewModel。
 /// サイドバーのナビゲーションと SPA ルーティングを担当する。
+/// 起動時に設定を読み込み、終了時に保存する。
 /// </summary>
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
@@ -28,6 +29,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         _currentPage = LocalConvertVm;
+        LoadSettings();
     }
 
     [RelayCommand]
@@ -49,7 +51,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsJapanese))]
     private string _currentLanguage = "ja";
 
-    public bool IsJapanese => _currentLanguage == "ja";
+    public bool IsJapanese => CurrentLanguage == "ja";
 
     [RelayCommand]
     private void ToggleLanguage()
@@ -63,5 +65,40 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         LocalizationService.SetLanguage(lang);
         CurrentLanguage = LocalizationService.CurrentLanguage;
+    }
+
+    // ───── 設定の永続化 ──────────────────────────────────────────────────────
+
+    /// <summary>起動時に保存済み設定を読み込む。</summary>
+    private void LoadSettings()
+    {
+        var s = AppSettingsStorage.Load();
+        LocalConvertVm.Settings.LoadFrom(s);
+        LocalConvertVm.OutputDirectory = s.LastOutputDirectory;
+        WebConvertVm.DownloadIntervalMs = s.DownloadIntervalMs;
+
+        // 言語・テーマ
+        if (!string.IsNullOrEmpty(s.AppLanguage))
+        {
+            LocalizationService.SetLanguage(s.AppLanguage);
+            CurrentLanguage = s.AppLanguage;
+            SettingsVm.SelectedLanguage = s.AppLanguage;
+        }
+        if (!string.IsNullOrEmpty(s.AppTheme))
+        {
+            SettingsVm.SelectedTheme = s.AppTheme;
+        }
+    }
+
+    /// <summary>終了時に現在の設定を保存する。</summary>
+    public void SaveSettings()
+    {
+        var s = new GuiSettings();
+        LocalConvertVm.Settings.SaveTo(s);
+        s.LastOutputDirectory  = LocalConvertVm.OutputDirectory;
+        s.DownloadIntervalMs   = WebConvertVm.DownloadIntervalMs;
+        s.AppLanguage          = LocalizationService.CurrentLanguage;
+        s.AppTheme             = SettingsVm.SelectedTheme;
+        AppSettingsStorage.Save(s);
     }
 }

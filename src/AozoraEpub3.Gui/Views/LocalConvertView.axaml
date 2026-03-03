@@ -150,7 +150,8 @@
                   <!-- 削除ボタン -->
                   <Button Grid.Column="3"
                           Content="✕"
-                          Command="{Binding $parent[UserControl].((vm:LocalConvertViewModel)DataContext).RemoveSelectedFileCommand}"
+                          Command="{Binding $parent[UserControl].((vm:LocalConvertViewModel)DataContext).RemoveFileCommand}"
+                          CommandParameter="{Binding}"
                           Padding="6,2"
                           Classes="flat"
                           VerticalAlignment="Center" />
@@ -248,7 +249,7 @@
               BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
               BorderThickness="0,1,0,0"
               Padding="12,6">
-        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
 
           <!-- ステータスメッセージ -->
           <TextBlock Grid.Column="0"
@@ -272,8 +273,17 @@
                   Padding="8,2" FontSize="11"
                   IsVisible="{Binding IsConverting}" />
 
+          <!-- 出力フォルダを開くボタン（変換完了後に表示）-->
+          <Button Grid.Column="3"
+                  Content="{DynamicResource Str_Action_OpenFolder}"
+                  Command="{Binding OpenOutputFolderCommand}"
+                  Padding="8,2" FontSize="11"
+                  Margin="4,0,0,0"
+                  IsVisible="{Binding LastOutputDirectory,
+                              Converter={x:Static ObjectConverters.IsNotNull}}" />
+
           <!-- ログトグルボタン -->
-          <ToggleButton Grid.Column="3"
+          <ToggleButton Grid.Column="4"
                         Content="{DynamicResource Str_Log_Toggle}"
                         IsChecked="{Binding IsLogVisible}"
                         Padding="8,2" FontSize="11"
@@ -454,7 +464,7 @@
                   <TextBlock Text="{DynamicResource Str_Setting_CoverImage}"
                              VerticalAlignment="Center" FontSize="13" />
                   <ComboBox Grid.Column="1"
-                            SelectedIndex="{Binding CoverImageType}"
+                            SelectedIndex="{Binding CoverImageTypeIndex}"
                             MinWidth="180">
                     <ComboBoxItem Content="{DynamicResource Str_Setting_CoverImage_None}" />
                     <ComboBoxItem Content="{DynamicResource Str_Setting_CoverImage_First}" />

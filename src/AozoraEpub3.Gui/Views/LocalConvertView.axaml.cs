@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -9,14 +10,16 @@ namespace AozoraEpub3.Gui.Views;
 
 /// <summary>
 /// LocalConvertView のコードビハインド。
-/// ドラッグ＆ドロップとファイルダイアログの処理を担当する。
-/// （Avalonia の DragDrop は XAML ではなくコードビハインドで AddHandler するのが確実）
+/// ドラッグ＆ドロップ、ファイルダイアログ、ログ自動スクロールを担当する。
 /// </summary>
 public partial class LocalConvertView : UserControl
 {
     public LocalConvertView()
     {
         InitializeComponent();
+
+        // ビュー全体で D&D を受け付ける
+        DragDrop.SetAllowDrop(this, true);
 
         // D&D ハンドラの登録
         AddHandler(DragDrop.DropEvent, OnDrop);
@@ -25,6 +28,9 @@ public partial class LocalConvertView : UserControl
 
         // ボタンクリックのセットアップ（Loaded 後に行う）
         this.Loaded += OnLoaded;
+
+        // DataContext が設定されたらログ購読を開始
+        this.DataContextChanged += OnDataContextChanged;
     }
 
     private LocalConvertViewModel? ViewModel => DataContext as LocalConvertViewModel;
@@ -50,6 +56,26 @@ public partial class LocalConvertView : UserControl
         // 表紙画像参照ボタン
         if (this.FindControl<Button>("CoverImageBrowseButton") is { } coverBtn)
             coverBtn.Click += OnCoverImageBrowseClick;
+    }
+
+    // ───── ログ自動スクロール ──────────────────────────────────────────────────
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (ViewModel is { } vm)
+        {
+            vm.LogLines.CollectionChanged += OnLogLinesChanged;
+        }
+    }
+
+    private void OnLogLinesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action != NotifyCollectionChangedAction.Add) return;
+        if (this.FindControl<ListBox>("LogListBox") is not { } lb) return;
+        if (lb.ItemCount == 0) return;
+
+        // 最後のアイテムにスクロール
+        lb.ScrollIntoView(lb.ItemCount - 1);
     }
 
     // ───── D&D ───────────────────────────────────────────────────────────────

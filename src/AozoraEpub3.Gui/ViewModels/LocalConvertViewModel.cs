@@ -46,7 +46,6 @@ public sealed partial class LocalConvertViewModel : ViewModelBase
 
     /// <summary>選択中のファイルアイテム</summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(RemoveSelectedFileCommand))]
     private InputFileItem? _selectedFile;
 
     // ───── 基本設定（Easy モード） ────────────────────────────────────────────
@@ -145,14 +144,12 @@ public sealed partial class LocalConvertViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanRemoveSelected))]
-    private void RemoveSelectedFile()
+    [RelayCommand]
+    private void RemoveFile(InputFileItem? item)
     {
-        if (SelectedFile is not null)
-            InputFiles.Remove(SelectedFile);
+        if (item is not null)
+            InputFiles.Remove(item);
     }
-
-    private bool CanRemoveSelected() => SelectedFile is not null;
 
     [RelayCommand]
     private void ClearAllFiles() => InputFiles.Clear();

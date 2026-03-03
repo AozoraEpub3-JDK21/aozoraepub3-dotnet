@@ -16,13 +16,9 @@
                  FontWeight="SemiBold" FontSize="14" />
       <StackPanel Orientation="Horizontal" Spacing="8">
         <RadioButton Content="日本語"
-                     IsChecked="{Binding SelectedLanguage,
-                                 Converter={x:Static StringConverters.IsNullOrEmpty},
-                                 ConverterParameter=ja}" />
+                     IsChecked="{Binding IsLangJapanese}" />
         <RadioButton Content="English"
-                     IsChecked="{Binding SelectedLanguage,
-                                 Converter={x:Static StringConverters.IsNullOrEmpty},
-                                 ConverterParameter=en}" />
+                     IsChecked="{Binding IsLangEnglish}" />
       </StackPanel>
     </StackPanel>
 
@@ -30,13 +26,10 @@
     <StackPanel Spacing="8">
       <TextBlock Text="{DynamicResource Str_SettingsPage_Theme}"
                  FontWeight="SemiBold" FontSize="14" />
-      <ComboBox SelectedItem="{Binding SelectedTheme}" MinWidth="200">
-        <ComboBoxItem Content="{DynamicResource Str_SettingsPage_Theme_Default}"
-                      Tag="default" />
-        <ComboBoxItem Content="{DynamicResource Str_SettingsPage_Theme_Light}"
-                      Tag="light" />
-        <ComboBoxItem Content="{DynamicResource Str_SettingsPage_Theme_Dark}"
-                      Tag="dark" />
+      <ComboBox SelectedIndex="{Binding ThemeIndex}" MinWidth="200">
+        <ComboBoxItem Content="{DynamicResource Str_SettingsPage_Theme_Default}" />
+        <ComboBoxItem Content="{DynamicResource Str_SettingsPage_Theme_Light}" />
+        <ComboBoxItem Content="{DynamicResource Str_SettingsPage_Theme_Dark}" />
       </ComboBox>
     </StackPanel>
 

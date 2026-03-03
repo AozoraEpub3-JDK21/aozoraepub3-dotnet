@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using AozoraEpub3.Core.Converter;
 using AozoraEpub3.Core.Info;
+using AozoraEpub3.Gui.Services;
 
 namespace AozoraEpub3.Gui.ViewModels;
 
@@ -30,7 +31,15 @@ public sealed partial class LocalConvertSettingsViewModel : ViewModelBase
     /// <summary>表紙画像種別 (-1=なし / 0=先頭の挿絵 / 1=同名 / 2=ファイル指定)</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCoverFileEnabled))]
+    [NotifyPropertyChangedFor(nameof(CoverImageTypeIndex))]
     private int _coverImageType = -1;
+
+    /// <summary>ComboBox用: 0=なし, 1=先頭の挿絵, 2=同名, 3=ファイル指定</summary>
+    public int CoverImageTypeIndex
+    {
+        get => CoverImageType + 1;
+        set => CoverImageType = value - 1;
+    }
 
     /// <summary>表紙ファイルパス入力が有効か</summary>
     public bool IsCoverFileEnabled => CoverImageType == 2;
@@ -291,5 +300,127 @@ public sealed partial class LocalConvertSettingsViewModel : ViewModelBase
             ChapterNumOnly, ChapterNumTitle,
             ChapterNumParen, ChapterNumParenTitle,
             chapterPatternText);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 設定の永続化サポート
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>GuiSettings からこの VM に設定を読み込む。</summary>
+    public void LoadFrom(GuiSettings s)
+    {
+        InputEncoding             = s.InputEncoding;
+        UseFileName               = s.UseFileName;
+        TitleType                 = s.TitleType;
+        CoverImageType            = s.CoverImageType;
+        CoverImagePath            = s.CoverImagePath;
+        InsertCoverPage           = s.InsertCoverPage;
+        InsertCoverPageToc        = s.InsertCoverPageToc;
+        MaxCoverLine              = s.MaxCoverLine;
+        TitlePageWrite            = s.TitlePageWrite;
+        TitlePageType             = s.TitlePageType;
+        OutputExtension           = s.OutputExtension;
+        UseInputFileName          = s.UseInputFileName;
+        ForKindle                 = s.ForKindle;
+        Vertical                  = s.Vertical;
+        InsertTocPage             = s.InsertTocPage;
+        TocVertical               = s.TocVertical;
+        InsertTitleToc            = s.InsertTitleToc;
+        NoIllust                  = s.NoIllust;
+        WithMarkId                = s.WithMarkId;
+        AutoYoko                  = s.AutoYoko;
+        AutoYokoNum1              = s.AutoYokoNum1;
+        AutoYokoNum3              = s.AutoYokoNum3;
+        AutoYokoEQ1               = s.AutoYokoEQ1;
+        DakutenType               = s.DakutenType;
+        IvsBMP                    = s.IvsBMP;
+        IvsSSP                    = s.IvsSSP;
+        SpaceHyphenation          = s.SpaceHyphenation;
+        CommentPrint              = s.CommentPrint;
+        CommentConvert            = s.CommentConvert;
+        RemoveEmptyLine           = s.RemoveEmptyLine;
+        MaxEmptyLine              = s.MaxEmptyLine;
+        ChapterNameMaxLength      = s.ChapterNameMaxLength;
+        ExcludeSequentialChapter  = s.ExcludeSequentialChapter;
+        UseNextLineChapterName    = s.UseNextLineChapterName;
+        ChapterSection            = s.ChapterSection;
+        ChapterH                  = s.ChapterH;
+        ChapterH1                 = s.ChapterH1;
+        ChapterH2                 = s.ChapterH2;
+        ChapterH3                 = s.ChapterH3;
+        SameLineChapter           = s.SameLineChapter;
+        ChapterName               = s.ChapterName;
+        ChapterNumOnly            = s.ChapterNumOnly;
+        ChapterNumTitle           = s.ChapterNumTitle;
+        ChapterNumParen           = s.ChapterNumParen;
+        ChapterNumParenTitle      = s.ChapterNumParenTitle;
+        ChapterPattern            = s.ChapterPattern;
+        ChapterPatternText        = s.ChapterPatternText;
+        PageBreak                 = s.PageBreak;
+        PageBreakSize             = s.PageBreakSize;
+        PageBreakEmpty            = s.PageBreakEmpty;
+        PageBreakEmptyLine        = s.PageBreakEmptyLine;
+        PageBreakEmptySize        = s.PageBreakEmptySize;
+        PageBreakChapter          = s.PageBreakChapter;
+        PageBreakChapterSize      = s.PageBreakChapterSize;
+    }
+
+    /// <summary>この VM の設定値を GuiSettings に書き出す。</summary>
+    public void SaveTo(GuiSettings s)
+    {
+        s.InputEncoding            = InputEncoding;
+        s.UseFileName              = UseFileName;
+        s.TitleType                = TitleType;
+        s.CoverImageType           = CoverImageType;
+        s.CoverImagePath           = CoverImagePath;
+        s.InsertCoverPage          = InsertCoverPage;
+        s.InsertCoverPageToc       = InsertCoverPageToc;
+        s.MaxCoverLine             = MaxCoverLine;
+        s.TitlePageWrite           = TitlePageWrite;
+        s.TitlePageType            = TitlePageType;
+        s.OutputExtension          = OutputExtension;
+        s.UseInputFileName         = UseInputFileName;
+        s.ForKindle                = ForKindle;
+        s.Vertical                 = Vertical;
+        s.InsertTocPage            = InsertTocPage;
+        s.TocVertical              = TocVertical;
+        s.InsertTitleToc           = InsertTitleToc;
+        s.NoIllust                 = NoIllust;
+        s.WithMarkId               = WithMarkId;
+        s.AutoYoko                 = AutoYoko;
+        s.AutoYokoNum1             = AutoYokoNum1;
+        s.AutoYokoNum3             = AutoYokoNum3;
+        s.AutoYokoEQ1              = AutoYokoEQ1;
+        s.DakutenType              = DakutenType;
+        s.IvsBMP                   = IvsBMP;
+        s.IvsSSP                   = IvsSSP;
+        s.SpaceHyphenation         = SpaceHyphenation;
+        s.CommentPrint             = CommentPrint;
+        s.CommentConvert           = CommentConvert;
+        s.RemoveEmptyLine          = RemoveEmptyLine;
+        s.MaxEmptyLine             = MaxEmptyLine;
+        s.ChapterNameMaxLength     = ChapterNameMaxLength;
+        s.ExcludeSequentialChapter = ExcludeSequentialChapter;
+        s.UseNextLineChapterName   = UseNextLineChapterName;
+        s.ChapterSection           = ChapterSection;
+        s.ChapterH                 = ChapterH;
+        s.ChapterH1                = ChapterH1;
+        s.ChapterH2                = ChapterH2;
+        s.ChapterH3                = ChapterH3;
+        s.SameLineChapter          = SameLineChapter;
+        s.ChapterName              = ChapterName;
+        s.ChapterNumOnly           = ChapterNumOnly;
+        s.ChapterNumTitle          = ChapterNumTitle;
+        s.ChapterNumParen          = ChapterNumParen;
+        s.ChapterNumParenTitle     = ChapterNumParenTitle;
+        s.ChapterPattern           = ChapterPattern;
+        s.ChapterPatternText       = ChapterPatternText;
+        s.PageBreak                = PageBreak;
+        s.PageBreakSize            = PageBreakSize;
+        s.PageBreakEmpty           = PageBreakEmpty;
+        s.PageBreakEmptyLine       = PageBreakEmptyLine;
+        s.PageBreakEmptySize       = PageBreakEmptySize;
+        s.PageBreakChapter         = PageBreakChapter;
+        s.PageBreakChapterSize     = PageBreakChapterSize;
     }
 }
