@@ -361,7 +361,7 @@ static BookInfo? GetBookInfo(
         var textEntryName = new string[1];
         var stream = ArchiveTextExtractor.GetTextInputStream(srcFilePath, ext, textEntryName, txtIdx);
         if (stream == null) return null;
-        using var src = new StreamReader(stream, Encoding.GetEncoding(encType));
+        using var src = new StreamReader(stream, ResolveEncoding(encType));
         var bookInfo = converter.GetBookInfo(srcFilePath, src, imageInfoReader, titleType, false);
         bookInfo.TextEntryName = textEntryName[0];
         return bookInfo;
@@ -423,7 +423,7 @@ static void ConvertFile(
                 LogAppender.Println("[ERROR] テキストストリームを開けませんでした");
                 return;
             }
-            src = new StreamReader(stream, Encoding.GetEncoding(encType));
+            src = new StreamReader(stream, ResolveEncoding(encType));
         }
 
         writer.Write(converter, src!, srcFilePath, ext, outFile, bookInfo, imageInfoReader);
@@ -447,6 +447,16 @@ static string? GetSameCoverFileName(string srcFilePath)
     }
     return null;
 }
+
+/// <summary>
+/// エンコード名を解決する。"MS932" (Java互換エイリアス) はコードページ932に変換。
+/// </summary>
+static Encoding ResolveEncoding(string name) =>
+    name.Equals("MS932", StringComparison.OrdinalIgnoreCase) ||
+    name.Equals("Shift_JIS", StringComparison.OrdinalIgnoreCase) ||
+    name.Equals("SJIS", StringComparison.OrdinalIgnoreCase)
+        ? Encoding.GetEncoding(932)
+        : Encoding.GetEncoding(name);
 
 static void ConvertUrlToEpub(
     string urlValue, string webConfig, NarouFormatSettings webSettings,

@@ -16,7 +16,16 @@ public sealed partial class LocalConvertSettingsViewModel : ViewModelBase
     // ══════════════════════════════════════════════════════════════════════════
 
     /// <summary>入力エンコード ("MS932" / "UTF-8")</summary>
-    [ObservableProperty] private string _inputEncoding = "MS932";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InputEncodingIndex))]
+    private string _inputEncoding = "MS932";
+
+    /// <summary>ComboBox用: 0=MS932, 1=UTF-8</summary>
+    public int InputEncodingIndex
+    {
+        get => InputEncoding == "UTF-8" ? 1 : 0;
+        set => InputEncoding = value == 1 ? "UTF-8" : "MS932";
+    }
 
     /// <summary>ファイル名から表題・著者を使用</summary>
     [ObservableProperty] private bool _useFileName = false;
@@ -67,7 +76,16 @@ public sealed partial class LocalConvertSettingsViewModel : ViewModelBase
     // ══════════════════════════════════════════════════════════════════════════
 
     /// <summary>出力拡張子 (".epub" / ".kepub.epub")</summary>
-    [ObservableProperty] private string _outputExtension = ".epub";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OutputExtensionIndex))]
+    private string _outputExtension = ".epub";
+
+    /// <summary>ComboBox用: 0=.epub, 1=.kepub.epub</summary>
+    public int OutputExtensionIndex
+    {
+        get => OutputExtension == ".kepub.epub" ? 1 : 0;
+        set => OutputExtension = value == 1 ? ".kepub.epub" : ".epub";
+    }
 
     /// <summary>出力ファイル名を入力ファイル名に合わせる</summary>
     [ObservableProperty] private bool _useInputFileName = false;

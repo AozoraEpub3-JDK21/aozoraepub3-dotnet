@@ -31,4 +31,11 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
+  <!-- web設定ファイル（サイト別テキスト抽出ルール）を出力ディレクトリにコピー -->
+  <ItemGroup>
+    <Content Include="..\..\web\**\*" CopyToOutputDirectory="PreserveNewest">
+      <Link>web\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
 </Project>

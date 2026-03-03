@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using AozoraEpub3.Gui.ViewModels;
@@ -10,9 +11,24 @@ public partial class WebConvertView : UserControl
     {
         InitializeComponent();
         this.Loaded += OnLoaded;
+        this.DataContextChanged += OnDataContextChanged;
     }
 
     private WebConvertViewModel? ViewModel => DataContext as WebConvertViewModel;
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (ViewModel is { } vm)
+            vm.LogLines.CollectionChanged += OnLogLinesChanged;
+    }
+
+    private void OnLogLinesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action != NotifyCollectionChangedAction.Add) return;
+        if (this.FindControl<ListBox>("WebLogListBox") is not { } lb) return;
+        if (lb.ItemCount == 0) return;
+        lb.ScrollIntoView(lb.ItemCount - 1);
+    }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {

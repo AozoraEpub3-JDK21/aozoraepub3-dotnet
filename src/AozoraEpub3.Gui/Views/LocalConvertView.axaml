@@ -213,7 +213,7 @@
                      Margin="0,0,0,2" />
 
           <ComboBox Grid.Row="1" Grid.Column="3"
-                    SelectedItem="{Binding Settings.InputEncoding}"
+                    SelectedIndex="{Binding Settings.InputEncodingIndex}"
                     MinWidth="100">
             <ComboBoxItem Content="MS932" />
             <ComboBoxItem Content="UTF-8" />
@@ -405,7 +405,7 @@
                   <TextBlock Text="{DynamicResource Str_Setting_InputEncoding}"
                              VerticalAlignment="Center" FontSize="13" />
                   <ComboBox Grid.Column="1"
-                            SelectedItem="{Binding InputEncoding}"
+                            SelectedIndex="{Binding InputEncodingIndex}"
                             MinWidth="100">
                     <ComboBoxItem Content="MS932" />
                     <ComboBoxItem Content="UTF-8" />
@@ -427,7 +427,7 @@
                   <TextBlock Text="{DynamicResource Str_Setting_OutputExtension}"
                              VerticalAlignment="Center" FontSize="13" />
                   <ComboBox Grid.Column="1"
-                            SelectedItem="{Binding OutputExtension}"
+                            SelectedIndex="{Binding OutputExtensionIndex}"
                             MinWidth="140">
                     <ComboBoxItem Content=".epub" />
                     <ComboBoxItem Content=".kepub.epub" />

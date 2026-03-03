@@ -80,7 +80,7 @@
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
             BorderThickness="1" CornerRadius="8"
             Padding="12,8" Margin="0,0,0,4">
-      <Grid ColumnDefinitions="*,Auto,Auto">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
         <TextBlock Text="{Binding StatusMessage}"
                    VerticalAlignment="Center" FontSize="12" Opacity="0.8" />
         <ProgressBar Grid.Column="1"
@@ -94,6 +94,20 @@
                 Command="{Binding CancelCommand}"
                 Padding="8,2" FontSize="11"
                 IsVisible="{Binding IsConverting}" />
+        <!-- 出力フォルダを開くボタン（変換完了後）-->
+        <Button Grid.Column="3"
+                Content="{DynamicResource Str_Action_OpenFolder}"
+                Command="{Binding OpenOutputFolderCommand}"
+                Padding="8,2" FontSize="11"
+                Margin="4,0,0,0"
+                IsVisible="{Binding LastOutputDirectory,
+                            Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <!-- ログトグルボタン -->
+        <ToggleButton Grid.Column="4"
+                      Content="{DynamicResource Str_Log_Toggle}"
+                      IsChecked="{Binding IsLogVisible}"
+                      Padding="8,2" FontSize="11"
+                      Margin="4,0,0,0" />
       </Grid>
     </Border>
 
@@ -104,16 +118,28 @@
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
             BorderThickness="1" CornerRadius="8"
             MaxHeight="160">
-      <ListBox ItemsSource="{Binding LogLines}"
-               BorderThickness="0"
-               FontFamily="Consolas,monospace"
-               FontSize="11">
-        <ListBox.ItemTemplate>
-          <DataTemplate>
-            <TextBlock Text="{Binding}" TextWrapping="NoWrap" />
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
+      <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="8,4">
+          <TextBlock Text="Log" FontSize="11" Opacity="0.5" VerticalAlignment="Center" />
+          <Button Grid.Column="1"
+                  Content="{DynamicResource Str_Log_Clear}"
+                  Command="{Binding ClearLogCommand}"
+                  Padding="6,1" FontSize="10"
+                  Classes="flat" />
+        </Grid>
+        <ListBox Grid.Row="1"
+                 x:Name="WebLogListBox"
+                 ItemsSource="{Binding LogLines}"
+                 BorderThickness="0"
+                 FontFamily="Consolas,monospace"
+                 FontSize="11">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding}" TextWrapping="NoWrap" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
     </Border>
 
   </Grid>

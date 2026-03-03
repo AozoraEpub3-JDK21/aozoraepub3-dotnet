@@ -54,7 +54,7 @@ public sealed class ConversionService
 
             var encoding = settings.InputEncoding == "UTF-8"
                 ? Encoding.UTF8
-                : Encoding.GetEncoding("MS932");
+                : Encoding.GetEncoding(932);  // MS932/Shift-JIS
 
             var titleType = (BookInfo.TitleType)Math.Clamp(settings.TitleType, 0, 5);
 
