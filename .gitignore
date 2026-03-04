@@ -8,6 +8,9 @@
 .claude/
 _patch_review*.py
 
+# Java 比較テスト用リファレンスファイル（generate-reference-epubs.ps1 で生成）
+tests/integration/reference/
+
 # dotenv files
 .env
 

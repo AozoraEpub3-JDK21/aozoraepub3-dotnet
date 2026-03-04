@@ -13,7 +13,7 @@ writing-mode: vertical-rl;
 -webkit-writing-mode: vertical-rl;
 -epub-writing-mode: vertical-rl;
 -epub-line-break: strict;
-line-break: strict;
+line-break: strict;	
 -epub-word-break: normal;
 word-break: normal;
 }
@@ -28,20 +28,20 @@ vertical-align: baseline;
 }
 
 /** 太字、ゴシック */
-{{ if boldUseGothic }}
+{{ if boldUseGothic -}}
 .b,
-{{ end }}
+{{ end -}}
 .gtc {
 font-family: '@ＭＳ ゴシック','@MS Gothic',sans-serif;
 }
-{{ if gothicUseBold }}
+{{ if gothicUseBold -}}
 .gtc,
-{{ end }}
+{{ end -}}
 .b { font-weight: bold; }
 .i { font-style: italic; }
 
 /** 外字フォント */
-{{ for gaijiInfo in vecGaijiInfo }}
+{{ for gaijiInfo in vecGaijiInfo -}}
 @font-face {font-family:"{{ gaijiInfo.ClassName }}"; src:url(../gaiji/{{ gaijiInfo.FileName }});}
 .{{ gaijiInfo.ClassName }} {font-family:"{{ gaijiInfo.ClassName }}";}
-{{ end }}
+{{ end -}}

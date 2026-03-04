@@ -40,7 +40,7 @@ public class Epub3Writer : IEpub3Writer
     const string XhtmlFooterVm = "xhtml_footer.sbn";
     const string TitleFile   = "title.xhtml";
     const string TitleMVm    = "title_middle.sbn";
-    const string TitleHVm    = "title_middle.sbn";
+    const string TitleHVm    = "title_horizontal.sbn";
     const string XhtmlNavFile = "nav.xhtml";
     const string XhtmlNavVm   = "xhtml_nav.sbn";
     const string CoverFile   = "cover.xhtml";
@@ -99,10 +99,10 @@ public class Epub3Writer : IEpub3Writer
     bool isKindle = false;
     string[] pageMargin = { "0", "0", "0", "0" };
     string[] bodyMargin = { "0", "0", "0", "0" };
-    float lineHeight;
+    float lineHeight = 1.8f;
     int fontSize = 100;
-    bool boldUseGothic = true;
-    bool gothicUseBold = true;
+    bool boldUseGothic = false;
+    bool gothicUseBold = false;
 
     // ─── 内部状態 ─────────────────────────────────────────────────
     ZipArchive? zipArchive;
@@ -229,7 +229,7 @@ public class Epub3Writer : IEpub3Writer
     {
         var entry = zip.CreateEntry(entryName, CompressionLevel.Optimal);
         using var stream = entry.Open();
-        using var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: true);
+        using var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(false), leaveOpen: true);
         MergeTemplateToWriter(writer, templateRelPath);
     }
 
@@ -743,7 +743,7 @@ public class Epub3Writer : IEpub3Writer
         // ZIP エントリ作成
         var zipEntry = zipArchive!.CreateEntry(OpsPath + XhtmlPath + sectionId + ".xhtml", CompressionLevel.Optimal);
         var entryStream = zipEntry.Open();
-        currentEntryWriter = new StreamWriter(entryStream, Encoding.UTF8, leaveOpen: false);
+        currentEntryWriter = new StreamWriter(entryStream, new System.Text.UTF8Encoding(false), leaveOpen: false);
 
         // ヘッダ出力
         SetContextVar("sectionInfo", sectionInfo);

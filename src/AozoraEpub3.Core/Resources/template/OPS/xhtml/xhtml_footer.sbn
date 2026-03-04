@@ -1,8 +1,8 @@
-{{ if sectionInfo.Middle || sectionInfo.Bottom }}
+{{ if sectionInfo.Middle || sectionInfo.Bottom -}}
 </td></tr></table>
-{{ if kindle }}
+{{ if kindle -}}
 </div></div>
-{{ end }}
-{{ end }}
+{{ end -}}
+{{ end -}}
 </body>
 </html>
