@@ -164,11 +164,11 @@ function Get-AozoraTextFile([string]$HtmlUrl, [string]$DestDir) {
     Write-Host "  HTML 取得中: $HtmlUrl" -ForegroundColor DarkGray
     $html = (Invoke-WebRequest -Uri $HtmlUrl -UseBasicParsing).Content
 
-    # <a href="...NN_NNNNN.zip"> 形式のリンクを検索
-    $m = [regex]::Match($html, 'href="([^"]*\d+_\d+\.zip)"')
+    # <a href="...NN_*.zip"> 形式のリンクを検索（1567_ruby_4948.zip 等にも対応）
+    $m = [regex]::Match($html, 'href="([^"]*\d+[^"]*\.zip)"')
     if (-not $m.Success) {
         # zip がなければ .txt を試す
-        $m = [regex]::Match($html, 'href="([^"]*\d+_\d+\.txt)"')
+        $m = [regex]::Match($html, 'href="([^"]*\d+[^"]*\.txt)"')
     }
     if (-not $m.Success) {
         throw "青空文庫ページからテキストファイルリンクが見つかりません: $HtmlUrl"

@@ -22,4 +22,11 @@
     <ProjectReference Include="..\..\src\AozoraEpub3.Core\AozoraEpub3.Core.csproj" />
   </ItemGroup>
 
+  <!-- gaiji フォントファイルを出力ディレクトリにコピー -->
+  <ItemGroup>
+    <Content Include="..\..\gaiji\**\*" CopyToOutputDirectory="PreserveNewest">
+      <Link>gaiji\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
 </Project>

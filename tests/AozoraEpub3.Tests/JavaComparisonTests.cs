@@ -136,6 +136,9 @@ public class JavaComparisonTests
         bookInfo.TitlePageType = BookInfo.TITLE_HORIZONTAL;
 
         converter.SetSpaceHyphenation(1);
+        // Java リファレンスは dakutenType=2（フォントモード）で生成されているため合わせる
+        converter.SetCharOutput(2, false, true);
+        converter.InitGaijiFontMap();
 
         using var reader2 = new StringReader(text);
         var imgR2 = new ImageInfoReader(true, imgReader_basePath);

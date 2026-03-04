@@ -184,7 +184,20 @@ public class Epub3Writer : IEpub3Writer
 
     public void Cancel() => canceled = true;
     public void SetIsKindle(bool isKindle) => this.isKindle = isKindle;
-    public string GetGaijiFontPath() => GaijiPath;
+    public string GetGaijiFontPath()
+    {
+        // templatePath が設定されている場合はその親ディレクトリ配下の gaiji/ を使用
+        // 例: templatePath = "/app/template/" → "/app/gaiji/"
+        if (!string.IsNullOrEmpty(templatePath))
+        {
+            string trimmed = templatePath.TrimEnd('/', Path.DirectorySeparatorChar);
+            string? parent = Path.GetDirectoryName(trimmed);
+            if (parent != null)
+                return Path.Combine(parent, "gaiji") + Path.DirectorySeparatorChar;
+        }
+        // templatePath 未設定（テスト等）→ AppContext.BaseDirectory 配下の gaiji/
+        return Path.Combine(AppContext.BaseDirectory, "gaiji") + Path.DirectorySeparatorChar;
+    }
 
     // ─── テンプレートヘルパー ─────────────────────────────────────
     void InitTemplateContext()

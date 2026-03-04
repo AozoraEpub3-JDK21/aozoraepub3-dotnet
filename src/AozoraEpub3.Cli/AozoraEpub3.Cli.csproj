@@ -23,4 +23,11 @@
     </Content>
   </ItemGroup>
 
+  <!-- gaiji フォントファイルを出力ディレクトリにコピー -->
+  <ItemGroup>
+    <Content Include="..\..\gaiji\**\*" CopyToOutputDirectory="PreserveNewest">
+      <Link>gaiji\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
 </Project>

@@ -121,7 +121,7 @@
 {{ end -}}
 {{ end -}}
 {{ for gaijiInfo in vecGaijiInfo -}}
-    <item id="font_{{ gaijiInfo.ClassName }}" href="gaiji/{{ gaijiInfo.FileName }}" media-type="font/ttf"/>
+{{ "" }}    <item id="font_{{ gaijiInfo.ClassName }}" href="gaiji/{{ gaijiInfo.FileName }}" media-type="font/ttf"/>
 {{ end -}}
 {{ "" }}    <item href="toc.ncx" id="ncx" media-type="application/x-dtbncx+xml"/>
   </manifest>
