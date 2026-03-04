@@ -27,7 +27,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot      = (Resolve-Path "$PSScriptRoot\..\..").Path
 $ReferenceDir  = Join-Path $PSScriptRoot "reference"
 $NarouWorkDir  = "D:\MyNovel"
-$NarouJarDir   = "D:\MyNovel\AozoraEpub3-1.2.0-jdk21"
+$NarouJarDir   = "D:\git\AozoraEpub3\AozoraEpub3\build\libs"
 $NarouJar      = Join-Path $NarouJarDir "AozoraEpub3.jar"
 $DotNetProject = Join-Path $RepoRoot "src\AozoraEpub3.Cli"
 
