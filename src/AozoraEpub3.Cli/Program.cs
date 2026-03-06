@@ -501,7 +501,10 @@ static void ConvertUrlToEpub(
             (BookInfo.TitleType)Math.Clamp(titleIndex, 0, 5), false);
     }
     bookInfoWeb.Vertical = vertical;
-    bookInfoWeb.InsertTocPage = false;
+    bookInfoWeb.InsertTocPage = true;
+    bookInfoWeb.TocVertical = !vertical ? false : true;
+    bookInfoWeb.TitlePageType = BookInfo.TITLE_HORIZONTAL;
+    bookInfoWeb.InsertTitleToc = true;
 
     // 出力ファイル名を決定
     string urlTitle = bookInfoWeb.Title ?? "converted";

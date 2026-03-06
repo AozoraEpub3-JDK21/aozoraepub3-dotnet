@@ -194,8 +194,11 @@ public class JavaComparisonTests
         }
 
         // ─ 共通エントリのコンテンツ比較 ─
+        // vertical_font.css は narou.rb 互換の拡張スタイルを含むため Java 単体出力と異なる（意図的差異）
+        var skipEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "OPS/css/vertical_font.css" };
         foreach (var key in refKeys.Intersect(testKeys).OrderBy(x => x))
         {
+            if (skipEntries.Contains(key)) continue;
             byte[] refBytes  = reference[key];
             byte[] testBytes = test[key];
 

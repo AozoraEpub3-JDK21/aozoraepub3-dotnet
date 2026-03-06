@@ -258,6 +258,8 @@ public class Epub3Writer : IEpub3Writer
             throw new IOException($"Template parse error ({templateRelPath}): {template.Messages[0]}");
 
         string output = template.Render(templateContext);
+        // Normalize line endings to CRLF for consistency with Java output
+        output = output.Replace("\r\n", "\n").Replace("\n", "\r\n");
         writer.Write(output);
     }
 
