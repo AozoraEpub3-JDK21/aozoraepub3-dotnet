@@ -30,11 +30,24 @@ public class AozoraTextFinalizer
     {
         LogAppender.Println("ファイナライズ処理を開始");
 
+        if (_settings.EnablePackBlankLine)
+            PackBlankLine(lines);
+
         if (_settings.EnableAuthorComments)
             DetectAndMarkAuthorComments(lines);
 
+        if (_settings.EnableConvertNumToKanji)
+            ConvertNumToKanji(lines);
+        else
+            HankakuNumToZenkaku(lines);
+
+        AlphabetToZenkaku(lines, _settings.EnableAlphabetForceZenkaku);
+
         if (_settings.EnableAutoIndent)
             ApplyAutoIndent(lines);
+
+        if (_settings.EnableHalfIndentBracket)
+            HalfIndentBracket(lines);
 
         if (_settings.EnableEnchantMidashi)
             EnchantMidashi(lines);
@@ -44,6 +57,9 @@ public class AozoraTextFinalizer
 
         if (_settings.EnableAutoJoinLine)
             AutoJoinLine(lines);
+
+        if (_settings.EnableDisplayEndOfBook)
+            AppendEndOfBook(lines);
 
         if (_settings.EnableInspectInvalidOpenCloseBrackets)
             InspectBrackets(lines);
@@ -99,25 +115,54 @@ public class AozoraTextFinalizer
         if (inPostscript) lines.Add("［＃ここで後書き終わり］");
     }
 
-    /// <summary>自動行頭字下げ (narou.rb互換)</summary>
+    /// <summary>自動行頭字下げ (narou.rb互換: inspector 判定 + 字下げ)</summary>
     private void ApplyAutoIndent(List<string> lines)
     {
+        // narou.rb: inspector.inspect_indent — 字下げ不要な行を除いた中で
+        // 50% 以上が字下げされていなければ自動字下げを適用
+        int targetCount = 0, noIndentCount = 0;
+        foreach (string line in lines)
+        {
+            if (line.Length == 0) continue;
+            char ch = line[0];
+            if (IgnoreIndentChars.Contains(ch)) continue;
+            targetCount++;
+            if (ch != ' ' && ch != '　') noIndentCount++;
+        }
+        if (targetCount == 0) return;
+        double ratio = (double)noIndentCount / targetCount;
+        if (ratio <= 0.5) return; // 半数以上が既に字下げされている
+
+        // ダッシュ冒頭行に全角スペース追加
+        for (int i = 0; i < lines.Count; i++)
+        {
+            if (lines[i].Length >= 2 && lines[i].StartsWith("――"))
+                lines[i] = "　" + lines[i];
+        }
+
+        // 行頭字下げ
         for (int i = 0; i < lines.Count; i++)
         {
             string line = lines[i];
             if (line.Length == 0) continue;
-            if (line.StartsWith('　') || line.StartsWith(' ')) continue;
-            if (line.StartsWith("［＃")) continue;
-            if (OpenBrackets.Contains(line[0])) continue;
-            if (line.Contains("［＃中見出し］") || line.Contains("［＃大見出し］") ||
-                line.Contains("［＃区切り線］") || line.Contains("［＃挿絵") ||
-                line.Contains("［＃改ページ］")) continue;
-
-            bool isParagraphStart = i == 0 || lines[i - 1].Length == 0;
-            if (isParagraphStart)
+            char ch = line[0];
+            if (AutoIndentIgnoreChars.Contains(ch)) continue;
+            // 中黒1つだけの場合は字下げしない (narou.rb: 三点リーダー代替対策)
+            if (ch == '・' && (line.Length < 2 || line[1] != '・')) continue;
+            if (ch == ' ' || ch == '　')
+                lines[i] = "　" + line.TrimStart(' ', '　');
+            else
                 lines[i] = "　" + line;
         }
     }
+
+    /// <summary>字下げ判定除外文字 (narou.rb: Inspector::IGNORE_INDENT_CHAR)</summary>
+    private static readonly HashSet<char> IgnoreIndentChars =
+        new("(（「『〈《≪【〔―・※［〝\n".ToCharArray());
+
+    /// <summary>字下げ対象外文字 (IgnoreIndentChars から・を除外)</summary>
+    private static readonly HashSet<char> AutoIndentIgnoreChars =
+        new("(（「『〈《≪【〔―※［〝\n".ToCharArray());
 
     /// <summary>改ページ直後の見出し化 (narou.rb互換)</summary>
     private void EnchantMidashi(List<string> lines)
@@ -209,5 +254,188 @@ public class AozoraTextFinalizer
                 line = line.Replace(pair[0], pair[1]);
             lines[i] = line;
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // B2: 空行圧縮 (narou.rb: enable_pack_blank_line)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>連続空行を圧縮する</summary>
+    private static void PackBlankLine(List<string> lines)
+    {
+        // narou.rb: "\n\n" → "\n" then "(^\n){3}" → "\n\n"
+        // 結果: 単一空行は除去、2連続空行は1つに
+        int consecutive = 0;
+        for (int i = lines.Count - 1; i >= 0; i--)
+        {
+            if (lines[i].Length == 0)
+            {
+                consecutive++;
+                if (consecutive > 1)
+                    lines.RemoveAt(i + 1); // 2つ目以降の連続空行を削除
+            }
+            else
+            {
+                consecutive = 0;
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // B3: 漢数字変換 (narou.rb: enable_convert_num_to_kanji)
+    // ═══════════════════════════════════════════════════════════════
+
+    private const string KanjiNum = "〇一二三四五六七八九";
+
+    /// <summary>半角・全角数字を漢数字に変換</summary>
+    private static void ConvertNumToKanji(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines[i];
+            if (line.StartsWith("［＃")) continue; // 注記行はスキップ
+
+            // 半角数字 → 全角数字 → 漢数字
+            line = NumToKanjiRegex.Replace(line, m =>
+            {
+                string digits = m.Value;
+                // カンマ含む数字はそのまま全角化
+                if (digits.Contains(',') || digits.Contains('，'))
+                    return HankakuToZenkaku(digits.Replace('，', ','));
+                return DigitsToKanji(NormalizeDigits(digits));
+            });
+            lines[i] = line;
+        }
+    }
+
+    private static readonly Regex NumToKanjiRegex = new(@"[\d０-９,，]+", RegexOptions.Compiled);
+
+    /// <summary>全角数字を半角に正規化</summary>
+    private static string NormalizeDigits(string s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (char c in s)
+        {
+            if (c >= '０' && c <= '９') sb.Append((char)(c - '０' + '0'));
+            else sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>半角数字列を漢数字に変換</summary>
+    private static string DigitsToKanji(string digits)
+    {
+        var sb = new System.Text.StringBuilder(digits.Length);
+        foreach (char c in digits)
+        {
+            if (c >= '0' && c <= '9') sb.Append(KanjiNum[c - '0']);
+            else sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>半角数字を全角数字に変換</summary>
+    private static string HankakuToZenkaku(string s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (char c in s)
+        {
+            if (c >= '0' && c <= '9') sb.Append((char)(c - '0' + '０'));
+            else if (c == ',') sb.Append('，');
+            else sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>漢数字変換なし版: 半角数字を全角に (2桁は縦中横)</summary>
+    private static void HankakuNumToZenkaku(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines[i];
+            if (line.StartsWith("［＃")) continue;
+            line = Regex.Replace(line, @"\d+", m =>
+            {
+                if (m.Value.Length == 2)
+                    return $"［＃縦中横］{m.Value}［＃縦中横終わり］";
+                return HankakuToZenkaku(m.Value);
+            });
+            lines[i] = line;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // B4: 英字全角化 (narou.rb: alphabet_to_zenkaku)
+    // ═══════════════════════════════════════════════════════════════
+
+    private static readonly Regex EnglishWordRegex = new(@"[\w.,!?'"" &:;-]+", RegexOptions.Compiled);
+    private const int EnglishSentenceMinLength = 8;
+
+    /// <summary>英字を全角に変換 (長い英文は保護)</summary>
+    private static void AlphabetToZenkaku(List<string> lines, bool force)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines[i];
+            if (line.StartsWith("［＃")) continue;
+            line = EnglishWordRegex.Replace(line, m =>
+            {
+                string match = m.Value;
+                if (!ContainsAlpha(match)) return match;
+                if (force)
+                    return AlphaToZenkaku(match);
+                // 英文（2語以上）または8文字以上 → 半角のまま保護
+                if (match.Split(' ').Length >= 2 || match.Length >= EnglishSentenceMinLength)
+                    return match;
+                return AlphaToZenkaku(match);
+            });
+            lines[i] = line;
+        }
+    }
+
+    private static bool ContainsAlpha(string s)
+    {
+        foreach (char c in s)
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) return true;
+        return false;
+    }
+
+    private static string AlphaToZenkaku(string s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (char c in s)
+        {
+            if (c >= 'a' && c <= 'z') sb.Append((char)(c - 'a' + 'ａ'));
+            else if (c >= 'A' && c <= 'Z') sb.Append((char)(c - 'A' + 'Ａ'));
+            else sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // B5: 二分アキ (narou.rb: half_indent_bracket)
+    // ═══════════════════════════════════════════════════════════════
+
+    private static readonly Regex HalfIndentTarget = new(
+        @"^[ 　\t]*((?:[〔「『(（【〈《≪〝]))", RegexOptions.Compiled);
+
+    /// <summary>行頭かぎ括弧に二分アキ注記を挿入</summary>
+    private static void HalfIndentBracket(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            lines[i] = HalfIndentTarget.Replace(lines[i], "［＃二分アキ］$1");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // B6: 読了表示 (narou.rb: enable_display_end_of_book)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>本の末尾に読了マーカーを追加</summary>
+    private static void AppendEndOfBook(List<string> lines)
+    {
+        lines.Add("");
+        lines.Add("［＃ここから地付き］［＃小書き］（本を読み終わりました）［＃小書き終わり］［＃ここで地付き終わり］");
     }
 }

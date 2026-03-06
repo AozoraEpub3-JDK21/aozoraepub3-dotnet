@@ -299,6 +299,18 @@ public class JavaComparisonTests
                 RegexOptions.IgnoreCase);
         }
 
+        // narou.rb 互換の拡張注記変換結果を正規化（Java 版では未対応だった注記）
+        if (name.EndsWith(".xhtml"))
+        {
+            // 二分アキ: <span class="half_em_space"> </span> → 除去
+            content = content.Replace("<span class=\"half_em_space\"> </span>", "");
+            // 前書き・後書き: <div class="introduction/postscript"> → 除去
+            content = Regex.Replace(content, @"<div class=""(introduction|postscript)"">", "");
+            content = content.Replace("</div><div class=\"clear\"></div>", "");
+            // fullsp span → 全角スペースに正規化（SpaceHyphenation差異吸収）
+            content = content.Replace("<span class=\"fullsp\"> </span>", "\u3000");
+        }
+
         return content;
     }
 

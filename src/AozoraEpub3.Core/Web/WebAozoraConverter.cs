@@ -208,6 +208,51 @@ public class WebAozoraConverter
         }
         else
         {
+            // ── TOC ページネーション (B7: Java版互換) ──
+            // PAGE_URL が定義されていれば最後のページリンクから総ページ数を取得して残りの目次ページを収集
+            if (_queryMap.ContainsKey(ExtractId.PAGE_URL))
+            {
+                var tocPageUrlElem = GetExtractFirstElement(doc, _queryMap.GetValueOrDefault(ExtractId.PAGE_URL));
+                if (tocPageUrlElem != null)
+                {
+                    string? pageHref = tocPageUrlElem.GetAttribute("href");
+                    if (!string.IsNullOrEmpty(pageHref))
+                    {
+                        var pm = Regex.Match(pageHref, @"[?&]p=(\d+)");
+                        if (pm.Success && int.TryParse(pm.Groups[1].Value, out int tocTotalPages) && tocTotalPages > 1)
+                        {
+                            var tocPageUrlInfo = _queryMap[ExtractId.PAGE_URL][0];
+                            for (int pageIdx = 2; pageIdx <= tocTotalPages; pageIdx++)
+                            {
+                                string nextTocUrl = tocPageUrlInfo.Replace(pageHref + "\t" + pageIdx);
+                                nextTocUrl = MakeAbsolute(nextTocUrl, listBaseUrl) ?? nextTocUrl;
+
+                                LogAppender.Append($"  目次ページ {pageIdx}/{tocTotalPages}");
+                                try
+                                {
+                                    await Task.Delay(Math.Max(1000, _interval), ct);
+                                    string tocPageHtml = await DownloadHtmlAsync(nextTocUrl, null, ct);
+                                    LogAppender.Println(" : Loaded.");
+                                    var tocPageDoc = await ParseAsync(tocPageHtml);
+                                    var nextHrefs = GetExtractElements(tocPageDoc, _queryMap.GetValueOrDefault(ExtractId.HREF));
+                                    if (nextHrefs != null)
+                                    {
+                                        // hrefElems に追加 (IElement[] → List に変換して結合)
+                                        var combined = new List<IElement>(hrefElems);
+                                        combined.AddRange(nextHrefs);
+                                        hrefElems = combined.ToArray();
+                                    }
+                                }
+                                catch (Exception e)
+                                {
+                                    LogAppender.Println($" 失敗: {e.Message}");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // 一覧ページのサブタイトル・更新日時
             var subtitleList = GetExtractStrings(doc, _queryMap.GetValueOrDefault(ExtractId.SUBTITLE_LIST));
             string[]? postDateList = GetDateList(doc, _queryMap.GetValueOrDefault(ExtractId.CONTENT_UPDATE_LIST));

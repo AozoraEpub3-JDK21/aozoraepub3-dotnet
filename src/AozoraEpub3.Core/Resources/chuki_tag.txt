@@ -217,6 +217,15 @@
 #［＃画像（ファイル名）入る］ → プログラム内で<img>に変換
 
 
+####二分アキ (narou.rb互換)
+二分アキ	<span class="half_em_space"> </span>
+
+####前書き・後書き (narou.rb互換)
+ここから前書き	<div class="introduction">
+ここで前書き終わり	</div><div class="clear"></div>
+ここから後書き	<div class="postscript">
+ここで後書き終わり	</div><div class="clear"></div>
+
 ##############その他##############
 ##訂正と「ママ」 → 未対応
 

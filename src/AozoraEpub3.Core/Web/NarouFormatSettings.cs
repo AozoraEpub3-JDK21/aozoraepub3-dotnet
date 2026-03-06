@@ -13,7 +13,7 @@ public class NarouFormatSettings
     public bool EnableYokogaki { get; set; } = false;
 
     /// <summary>本の終了マーカー表示</summary>
-    public bool EnableDisplayEndOfBook { get; set; } = false;
+    public bool EnableDisplayEndOfBook { get; set; } = true;
 
     /// <summary>章中表紙で「ページの左右中央」を使用</summary>
     public bool ChapterUseCenterPage { get; set; } = true;
@@ -37,13 +37,22 @@ public class NarouFormatSettings
     public bool EnableHalfIndentBracket { get; set; } = true;
 
     /// <summary>数字の漢数字化</summary>
-    public bool EnableConvertNumToKanji { get; set; } = false;
+    public bool EnableConvertNumToKanji { get; set; } = true;
 
     /// <summary>漢数字の単位化</summary>
-    public bool EnableKanjiNumWithUnits { get; set; } = false;
+    public bool EnableKanjiNumWithUnits { get; set; } = true;
 
     /// <summary>単位化する際の下位桁ゼロ数</summary>
-    public int KanjiNumWithUnitsLowerDigitZero { get; set; } = 2;
+    public int KanjiNumWithUnitsLowerDigitZero { get; set; } = 3;
+
+    /// <summary>英字の全角化</summary>
+    public bool EnableAlphabetForceZenkaku { get; set; } = false;
+
+    /// <summary>8文字未満の英単語を全角にしない</summary>
+    public bool DisableAlphabetWordToZenkaku { get; set; } = false;
+
+    /// <summary>空行を圧縮する</summary>
+    public bool EnablePackBlankLine { get; set; } = true;
 
     /// <summary>記号の全角化</summary>
     public bool EnableConvertSymbolsToZenkaku { get; set; } = false;
@@ -58,7 +67,7 @@ public class NarouFormatSettings
     public bool EnableAuthorComments { get; set; } = true;
 
     /// <summary>自動行頭字下げ</summary>
-    public bool EnableAutoIndent { get; set; } = false;
+    public bool EnableAutoIndent { get; set; } = true;
 
     /// <summary>改ページ直後の見出し化</summary>
     public bool EnableEnchantMidashi { get; set; } = true;
@@ -139,6 +148,9 @@ public class NarouFormatSettings
             case "kanji_num_with_units_lower_digit_zero":
                 if (int.TryParse(value, out int v1)) KanjiNumWithUnitsLowerDigitZero = v1; break;
             case "enable_convert_symbols_to_zenkaku": EnableConvertSymbolsToZenkaku = ToBool(value); break;
+            case "enable_alphabet_force_zenkaku": EnableAlphabetForceZenkaku = ToBool(value); break;
+            case "disable_alphabet_word_to_zenkaku": DisableAlphabetWordToZenkaku = ToBool(value); break;
+            case "enable_pack_blank_line": EnablePackBlankLine = ToBool(value); break;
             case "enable_auto_join_in_brackets": EnableAutoJoinInBrackets = ToBool(value); break;
             case "enable_auto_join_line": EnableAutoJoinLine = ToBool(value); break;
             case "enable_author_comments": EnableAuthorComments = ToBool(value); break;
@@ -184,7 +196,7 @@ public class NarouFormatSettings
             ; author_comment_style: css / simple / plain
             author_comment_style = "css"
             enable_yokogaki = false
-            enable_display_end_of_book = false
+            enable_display_end_of_book = true
             chapter_use_center_page = true
             chapter_use_hashira = true
             include_story = true
@@ -192,14 +204,17 @@ public class NarouFormatSettings
             show_post_date = false
             show_publish_date = false
             enable_half_indent_bracket = true
-            enable_convert_num_to_kanji = false
-            enable_kanji_num_with_units = false
-            kanji_num_with_units_lower_digit_zero = 2
+            enable_convert_num_to_kanji = true
+            enable_kanji_num_with_units = true
+            kanji_num_with_units_lower_digit_zero = 3
+            enable_alphabet_force_zenkaku = false
+            disable_alphabet_word_to_zenkaku = false
+            enable_pack_blank_line = true
             enable_convert_symbols_to_zenkaku = false
             enable_auto_join_in_brackets = false
             enable_auto_join_line = false
             enable_author_comments = true
-            enable_auto_indent = false
+            enable_auto_indent = true
             enable_enchant_midashi = true
             enable_inspect_invalid_openclose_brackets = true
             enable_narou_tag = true
