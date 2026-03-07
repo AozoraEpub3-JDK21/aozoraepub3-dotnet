@@ -1,8 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media;
-using AvaloniaEdit;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using AozoraEpub3.Core.Editor;
 using AozoraEpub3.Gui.Controls;
 using AozoraEpub3.Gui.ViewModels;
@@ -11,39 +13,73 @@ namespace AozoraEpub3.Gui.Views;
 
 public partial class EditorView : UserControl
 {
-    private TextEditor _textEditor = null!;
     private WebView2Host? _webView;
     private readonly EditorSuggestService _suggestService = new();
     private ListBox? _suggestList;
     private Popup? _suggestPopup;
     private string _suggestFilter = "";
     private bool _isSuggestActive;
+    private ScrollViewer? _textBoxScrollViewer;
 
     public EditorView()
     {
         InitializeComponent();
-        InitTextEditor();
         DataContextChanged += OnDataContextChanged;
+
+        EditorTextBox.PropertyChanged += OnEditorTextBoxPropertyChanged;
+        EditorTextBox.TextChanged += OnEditorTextBoxTextChanged;
+
+        // スクロール同期のため ScrollViewer を取得
+        EditorTextBox.TemplateApplied += OnTextBoxTemplateApplied;
     }
 
-    private void InitTextEditor()
+    // ── 行番号同期 ──────────────────────────────────────────────
+
+    private void OnTextBoxTemplateApplied(object? sender, TemplateAppliedEventArgs e)
     {
-        _textEditor = new TextEditor
+        // TextBox 内部の ScrollViewer を取得
+        _textBoxScrollViewer = EditorTextBox.FindDescendantOfType<ScrollViewer>();
+        if (_textBoxScrollViewer != null)
         {
-            FontFamily = new FontFamily("BIZ UDGothic, MS Gothic, Consolas, monospace"),
-            FontSize = 14,
-            ShowLineNumbers = true,
-            WordWrap = true,
-            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-        };
-
-        _textEditor.TextChanged += OnTextEditorTextChanged;
-        _textEditor.TextArea.TextEntering += OnTextEntering;
-        _textEditor.TextArea.TextEntered += OnTextEntered;
-
-        EditorContainer.Children.Add(_textEditor);
+            _textBoxScrollViewer.ScrollChanged += OnTextBoxScrollChanged;
+            // 行番号パネルの Margin を ScrollViewer のオフセットに同期
+            UpdateLineNumberScroll();
+        }
     }
+
+    private void OnTextBoxScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        UpdateLineNumberScroll();
+    }
+
+    private void UpdateLineNumberScroll()
+    {
+        if (_textBoxScrollViewer == null) return;
+        // 行番号パネルの垂直位置を TextBox のスクロールに同期
+        var offset = _textBoxScrollViewer.Offset;
+        LineNumberBlock.Margin = new Thickness(0, -offset.Y + 4, 0, 0);
+    }
+
+    private void OnEditorTextBoxPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property.Name == "Text")
+            UpdateLineNumbers();
+    }
+
+    private void OnEditorTextBoxTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        UpdateLineNumbers();
+    }
+
+    private void UpdateLineNumbers()
+    {
+        var text = EditorTextBox.Text ?? "";
+        var lineCount = text.Length == 0 ? 1 : text.Split('\n').Length;
+        var numbers = string.Join('\n', Enumerable.Range(1, lineCount));
+        LineNumberBlock.Text = numbers;
+    }
+
+    // ── ViewModel 接続 ───────────────────────────────────────────
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
@@ -53,15 +89,6 @@ public partial class EditorView : UserControl
             vm.SnippetInsertRequested += OnSnippetInsertRequested;
             vm.OpenFileRequested += OnOpenFileRequested;
             vm.SaveFileRequested += OnSaveFileRequested;
-
-            vm.PropertyChanged += (_, args) =>
-            {
-                if (args.PropertyName == nameof(EditorViewModel.EditorText) &&
-                    _textEditor.Text != vm.EditorText)
-                {
-                    _textEditor.Text = vm.EditorText;
-                }
-            };
         }
     }
 
@@ -103,152 +130,15 @@ public partial class EditorView : UserControl
         return file?.Path.LocalPath;
     }
 
-    // ── テキスト変更 → ViewModel に反映 ────────────────────────
-
-    private void OnTextEditorTextChanged(object? sender, EventArgs e)
-    {
-        if (DataContext is EditorViewModel vm)
-            vm.EditorText = _textEditor.Text;
-    }
-
-    // ── 括弧ペアリング + サジェストトリガー ───────────────────────
-
-    private void OnTextEntering(object? sender, TextInputEventArgs e)
-    {
-        if (e.Text?.Length != 1) return;
-        var ch = e.Text[0];
-
-        if (_isSuggestActive) return;
-
-        var charAfter = GetCharAfterCaret();
-        var charBefore = GetCharBeforeCaret();
-        var selectedText = _textEditor.TextArea.Selection.IsEmpty
-            ? null
-            : _textEditor.TextArea.Selection.GetText();
-
-        var result = _suggestService.HandleBracketInput(ch, charAfter, charBefore, selectedText);
-        if (result != null)
-        {
-            e.Handled = true;
-
-            if (result.ShouldSkip)
-            {
-                _textEditor.TextArea.Caret.Offset++;
-            }
-            else if (!string.IsNullOrEmpty(selectedText))
-            {
-                var start = _textEditor.SelectionStart;
-                _textEditor.Document.Replace(start, _textEditor.SelectionLength, result.TextToInsert);
-                _textEditor.TextArea.Caret.Offset = start + result.CursorOffset;
-            }
-            else
-            {
-                var offset = _textEditor.TextArea.Caret.Offset;
-                _textEditor.Document.Insert(offset, result.TextToInsert);
-                _textEditor.TextArea.Caret.Offset = offset + result.CursorOffset;
-            }
-        }
-    }
-
-    private void OnTextEntered(object? sender, TextInputEventArgs e)
-    {
-        if (e.Text?.Length != 1) return;
-
-        var textBeforeCaret = GetTextBeforeCaret(10);
-        if (_suggestService.ShouldShowSuggest(textBeforeCaret))
-        {
-            _suggestFilter = "";
-            _isSuggestActive = true;
-            UpdateSuggestPopup();
-            ShowSuggestPopup();
-        }
-        else if (_isSuggestActive)
-        {
-            _suggestFilter += e.Text;
-            UpdateSuggestPopup();
-        }
-    }
-
-    // ── サジェストポップアップ ──────────────────────────────────
-
-    private void ShowSuggestPopup()
-    {
-        if (_suggestPopup == null)
-        {
-            _suggestList = new ListBox { MaxHeight = 200, MinWidth = 200 };
-            _suggestList.DoubleTapped += (_, _) => ApplySelectedSuggestion();
-
-            _suggestPopup = new Popup
-            {
-                Child = new Border
-                {
-                    Background = Brushes.White,
-                    BorderBrush = Brushes.Gray,
-                    BorderThickness = new Avalonia.Thickness(1),
-                    CornerRadius = new Avalonia.CornerRadius(4),
-                    Child = _suggestList
-                },
-                PlacementTarget = _textEditor,
-                Placement = PlacementMode.Pointer,
-                IsLightDismissEnabled = true,
-            };
-            _suggestPopup.Closed += (_, _) =>
-            {
-                _isSuggestActive = false;
-                _suggestFilter = "";
-            };
-
-            ((Grid)Content!).Children.Add(_suggestPopup);
-        }
-
-        _suggestPopup.IsOpen = true;
-    }
-
-    private void UpdateSuggestPopup()
-    {
-        if (_suggestList == null) return;
-
-        var items = _suggestService.GetSuggestions(_suggestFilter);
-        _suggestList.ItemsSource = items.Select(i => i.DisplayName).ToList();
-
-        if (items.Count == 0)
-            CloseSuggestPopup();
-        else if (_suggestList.ItemCount > 0)
-            _suggestList.SelectedIndex = 0;
-    }
-
-    private void ApplySelectedSuggestion()
-    {
-        if (_suggestList?.SelectedItem is not string selectedName) return;
-
-        var items = _suggestService.GetSuggestions(_suggestFilter);
-        var item = items.FirstOrDefault(i => i.DisplayName == selectedName);
-        if (item == null) return;
-
-        var offset = _textEditor.TextArea.Caret.Offset;
-        var deleteLen = 2 + _suggestFilter.Length; // ［＃ + filter
-        var insertStart = Math.Max(0, offset - deleteLen);
-
-        _textEditor.Document.Replace(insertStart, deleteLen, item.InsertText);
-        _textEditor.TextArea.Caret.Offset = insertStart + item.CursorOffset;
-
-        CloseSuggestPopup();
-        _textEditor.Focus();
-    }
-
-    private void CloseSuggestPopup()
-    {
-        if (_suggestPopup != null)
-            _suggestPopup.IsOpen = false;
-        _isSuggestActive = false;
-        _suggestFilter = "";
-    }
-
     // ── WebView2 プレビュー ────────────────────────────────────
 
-    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+
+        Dispatcher.UIThread.Post(() => EditorTextBox.Focus(),
+            DispatcherPriority.Loaded);
+
         if (!OperatingSystem.IsWindows()) return;
         if (_webView != null) return;
 
@@ -265,7 +155,7 @@ public partial class EditorView : UserControl
     private void OnPreviewUpdateRequested(string xhtml)
     {
         if (_webView == null || !_webView.IsWebViewReady) return;
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(() =>
         {
             _webView.NavigateToString(xhtml);
         });
@@ -275,47 +165,30 @@ public partial class EditorView : UserControl
 
     private void OnSnippetInsertRequested(SnippetInsertRequest request)
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(() =>
         {
-            var offset = _textEditor.TextArea.Caret.Offset;
+            var selStart = EditorTextBox.SelectionStart;
+            var text = EditorTextBox.Text ?? "";
 
             if (request.IsLineLevel)
             {
-                var line = _textEditor.Document.GetLineByOffset(offset);
-                _textEditor.Document.Insert(line.Offset, request.Text + "\n");
-                _textEditor.TextArea.Caret.Offset = line.Offset + request.Text.Length + 1;
+                // 行頭を探す
+                var lineStart = text.LastIndexOf('\n', Math.Max(0, selStart - 1)) + 1;
+                var newText = text.Insert(lineStart, request.Text + "\n");
+                EditorTextBox.Text = newText;
+                EditorTextBox.SelectionStart = lineStart + request.Text.Length + 1;
+                EditorTextBox.SelectionEnd = EditorTextBox.SelectionStart;
             }
             else
             {
-                _textEditor.Document.Insert(offset, request.Text);
-                _textEditor.TextArea.Caret.Offset = offset + request.CursorOffset;
+                var newText = text.Insert(selStart, request.Text);
+                EditorTextBox.Text = newText;
+                EditorTextBox.SelectionStart = selStart + request.CursorOffset;
+                EditorTextBox.SelectionEnd = EditorTextBox.SelectionStart;
             }
 
-            _textEditor.Focus();
+            EditorTextBox.Focus();
         });
-    }
-
-    // ── ヘルパー ──────────────────────────────────────────────
-
-    private char? GetCharAfterCaret()
-    {
-        var offset = _textEditor.TextArea.Caret.Offset;
-        return offset < _textEditor.Document.TextLength
-            ? _textEditor.Document.GetCharAt(offset)
-            : null;
-    }
-
-    private char? GetCharBeforeCaret()
-    {
-        var offset = _textEditor.TextArea.Caret.Offset;
-        return offset > 0 ? _textEditor.Document.GetCharAt(offset - 1) : null;
-    }
-
-    private string GetTextBeforeCaret(int maxLength)
-    {
-        var offset = _textEditor.TextArea.Caret.Offset;
-        var start = Math.Max(0, offset - maxLength);
-        return _textEditor.Document.GetText(start, offset - start);
     }
 
     // ── キーボードショートカット ────────────────────────────────
@@ -323,38 +196,6 @@ public partial class EditorView : UserControl
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-
-        if (_isSuggestActive && _suggestList != null)
-        {
-            switch (e.Key)
-            {
-                case Key.Down:
-                    if (_suggestList.SelectedIndex < _suggestList.ItemCount - 1)
-                        _suggestList.SelectedIndex++;
-                    e.Handled = true;
-                    return;
-                case Key.Up:
-                    if (_suggestList.SelectedIndex > 0)
-                        _suggestList.SelectedIndex--;
-                    e.Handled = true;
-                    return;
-                case Key.Enter or Key.Tab:
-                    ApplySelectedSuggestion();
-                    e.Handled = true;
-                    return;
-                case Key.Escape:
-                    CloseSuggestPopup();
-                    e.Handled = true;
-                    return;
-                case Key.Back:
-                    if (_suggestFilter.Length > 0)
-                        _suggestFilter = _suggestFilter[..^1];
-                    else
-                        CloseSuggestPopup();
-                    UpdateSuggestPopup();
-                    return;
-            }
-        }
 
         if (DataContext is not EditorViewModel vm) return;
 

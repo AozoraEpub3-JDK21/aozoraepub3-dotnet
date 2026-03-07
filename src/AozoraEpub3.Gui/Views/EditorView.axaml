@@ -7,39 +7,70 @@
   <Grid RowDefinitions="Auto,*,Auto">
 
     <!-- ToolBar -->
-    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="4" Margin="8,4">
-      <Button Content="新規" Command="{Binding NewFileCommand}" ToolTip.Tip="Ctrl+N" Padding="6,4"/>
-      <Button Content="開く" Command="{Binding OpenFileCommand}" ToolTip.Tip="Ctrl+O" Padding="6,4"/>
-      <Button Content="保存" Command="{Binding SaveFileCommand}" ToolTip.Tip="Ctrl+S" Padding="6,4"/>
-      <Separator/>
-      <ComboBox ItemsSource="{Binding ModeNames}"
-                SelectedIndex="{Binding SelectedModeIndex}"
-                Width="100" VerticalAlignment="Center"/>
-      <Separator/>
-      <Button Content="ルビ" Command="{Binding InsertSnippetCommand}" CommandParameter="ruby"
-              ToolTip.Tip="Ctrl+R" Padding="6,4"/>
-      <Button Content="傍点" Command="{Binding InsertSnippetCommand}" CommandParameter="emphasis"
-              ToolTip.Tip="Ctrl+E" Padding="6,4"/>
-      <Button Content="太字" Command="{Binding InsertSnippetCommand}" CommandParameter="bold"
-              ToolTip.Tip="Ctrl+B" Padding="6,4"/>
-      <Button Content="見出し" Command="{Binding InsertSnippetCommand}" CommandParameter="heading"
-              ToolTip.Tip="Ctrl+H" Padding="6,4"/>
-      <Button Content="改ページ" Command="{Binding InsertSnippetCommand}" CommandParameter="pagebreak"
-              Padding="6,4"/>
-      <Separator/>
-      <ToggleButton Content="縦書き" IsChecked="{Binding IsVertical}" Padding="6,4"/>
-      <Button Content="整形" Command="{Binding FormatTextCommand}"
-              ToolTip.Tip="Ctrl+Shift+F" Padding="6,4"/>
-      <Separator/>
-      <ToggleButton Content="プレビュー" IsChecked="{Binding IsPreviewVisible}"
-                    ToolTip.Tip="F5" Padding="6,4"/>
-    </StackPanel>
+    <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+      <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,4">
+        <Button Content="新規" Command="{Binding NewFileCommand}" ToolTip.Tip="Ctrl+N" Padding="4,2" FontSize="12"/>
+        <Button Content="開く" Command="{Binding OpenFileCommand}" ToolTip.Tip="Ctrl+O" Padding="4,2" FontSize="12"/>
+        <Button Content="保存" Command="{Binding SaveFileCommand}" ToolTip.Tip="Ctrl+S" Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <ComboBox ItemsSource="{Binding ModeNames}"
+                  SelectedIndex="{Binding SelectedModeIndex}"
+                  Width="75" FontSize="12" VerticalAlignment="Center"/>
+        <Separator/>
+        <Button Content="ルビ" Command="{Binding InsertSnippetCommand}" CommandParameter="ruby"
+                ToolTip.Tip="Ctrl+R" Padding="4,2" FontSize="12"/>
+        <Button Content="傍点" Command="{Binding InsertSnippetCommand}" CommandParameter="emphasis"
+                ToolTip.Tip="Ctrl+E" Padding="4,2" FontSize="12"/>
+        <Button Content="太字" Command="{Binding InsertSnippetCommand}" CommandParameter="bold"
+                ToolTip.Tip="Ctrl+B" Padding="4,2" FontSize="12"/>
+        <Button Content="見出し" Command="{Binding InsertSnippetCommand}" CommandParameter="heading"
+                ToolTip.Tip="Ctrl+H" Padding="4,2" FontSize="12"/>
+        <Button Content="改頁" Command="{Binding InsertSnippetCommand}" CommandParameter="pagebreak"
+                Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <ToggleButton Content="縦書" IsChecked="{Binding IsVertical}" Padding="4,2" FontSize="12"/>
+        <Button Content="整形" Command="{Binding FormatTextCommand}"
+                ToolTip.Tip="Ctrl+Shift+F" Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <ToggleButton Content="Preview" IsChecked="{Binding IsPreviewVisible}"
+                      ToolTip.Tip="F5" Padding="4,2" FontSize="12"/>
+      </StackPanel>
+    </ScrollViewer>
 
     <!-- Editor + Preview Split -->
     <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*">
 
-      <!-- TextEditor (created in code-behind) -->
-      <Grid x:Name="EditorContainer" Grid.Column="0"/>
+      <!-- Editor with Line Numbers -->
+      <Border Grid.Column="0" Background="#1E1E1E">
+        <Grid ColumnDefinitions="Auto,*">
+          <!-- Line Number Panel -->
+          <Border Grid.Column="0" Background="#252526" Padding="8,4,8,4"
+                  BorderBrush="#3E3E42" BorderThickness="0,0,1,0">
+            <TextBlock x:Name="LineNumberBlock"
+                       FontFamily="BIZ UDGothic, MS Gothic, Consolas, monospace"
+                       FontSize="14"
+                       Foreground="#858585"
+                       TextAlignment="Right"
+                       MinWidth="30"
+                       Text="1"/>
+          </Border>
+
+          <!-- Main TextBox -->
+          <TextBox x:Name="EditorTextBox" Grid.Column="1"
+                   Text="{Binding EditorText, Mode=TwoWay}"
+                   AcceptsReturn="True"
+                   AcceptsTab="True"
+                   TextWrapping="NoWrap"
+                   FontFamily="BIZ UDGothic, MS Gothic, Consolas, monospace"
+                   FontSize="14"
+                   Background="#1E1E1E"
+                   Foreground="#DCDCDC"
+                   CaretBrush="#AEAFAD"
+                   SelectionBrush="#264F78"
+                   BorderThickness="0"
+                   Padding="4"/>
+        </Grid>
+      </Border>
 
       <!-- Splitter -->
       <GridSplitter Grid.Column="1" Width="4"
@@ -56,7 +87,7 @@
     </Grid>
 
     <!-- StatusBar -->
-    <Border Grid.Row="2" Background="#F0F0F0" Padding="8,4">
+    <Border Grid.Row="2" Background="#2D2D30" Padding="8,4">
       <StackPanel Orientation="Horizontal" Spacing="16">
         <TextBlock Text="{Binding WindowTitle}" FontWeight="SemiBold"/>
         <TextBlock>
