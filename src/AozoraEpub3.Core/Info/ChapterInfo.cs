@@ -32,10 +32,10 @@ public class ChapterInfo
 
     public string? NoTagChapterName => ChapterName != null ? CharUtils.RemoveTag(ChapterName) : null;
 
-    /// <summary>Scribанでループするために配列を返す</summary>
-    public int[]? GetLevelStart() => LevelStart == 0 ? null : new int[LevelStart];
-    /// <summary>Scribанでループするために配列を返す</summary>
-    public int[]? GetLevelEnd() => LevelEnd == 0 ? null : new int[LevelEnd];
-    /// <summary>Scribанでループするために配列を返す</summary>
-    public int[]? GetNavClose() => NavClose <= 0 ? null : new int[NavClose];
+    /// <summary>Scribanでループするために配列を返す（プロパティ）</summary>
+    public int[]? GetLevelStart => LevelStart == 0 ? null : new int[LevelStart];
+    /// <summary>Scribanでループするために配列を返す（プロパティ）</summary>
+    public int[]? GetLevelEnd => LevelEnd == 0 ? null : new int[LevelEnd];
+    /// <summary>Scribanでループするために配列を返す（プロパティ）</summary>
+    public int[]? GetNavClose => NavClose <= 0 ? null : new int[NavClose];
 }

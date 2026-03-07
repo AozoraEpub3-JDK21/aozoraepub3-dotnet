@@ -80,10 +80,16 @@ nav#landmarks { display:none; }
 {{ if chapter.ChapterName -}}
 {{ hasChapter = true -}}
 {{ idx = idx + 1 -}}
+{{ for i in chapter.GetLevelStart -}}
+{{ "" }}			<li><ol>
+{{ end -}}
 {{ if chapter.ChapterId -}}
 {{ "" }}			<li class="chapter" id="toc{{ idx }}"><a href="{{ chapter.SectionId }}.xhtml#{{ chapter.ChapterId }}">{{ chapter.ChapterName }}</a></li>
 {{ else -}}
 {{ "" }}			<li class="chapter" id="toc{{ idx }}"><a href="{{ chapter.SectionId }}.xhtml">{{ chapter.ChapterName }}</a></li>
+{{ end -}}
+{{ for i in chapter.GetLevelEnd -}}
+{{ "" }}			</ol></li>
 {{ end -}}
 {{ end -}}
 {{ end -}}

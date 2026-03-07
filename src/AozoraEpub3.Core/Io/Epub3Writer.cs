@@ -93,8 +93,8 @@ public class Epub3Writer : IEpub3Writer
     int coverH = 800;
     float jpegQuality = 0.8f;
     float gammaValue = 0;
-    bool navNest = false;
-    bool ncxNest = false;
+    bool navNest = true;
+    bool ncxNest = true;
     bool isSvgImage = false;
     bool isKindle = false;
     string[] pageMargin = { "0", "0", "0", "0" };

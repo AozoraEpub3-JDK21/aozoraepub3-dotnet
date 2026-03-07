@@ -28,7 +28,7 @@ public class EpubIntegrationTests : IDisposable
 
     // ── ヘルパー ──────────────────────────────────────────────────────────────
 
-    private static string ConvertToEpub(string aozoraText, string outputDir, string outputName = "test")
+    private static string ConvertToEpub(string aozoraText, string outputDir, string outputName = "test", bool enableChapterDetection = false)
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         string outPath = Path.Combine(outputDir, outputName + ".epub");
@@ -36,6 +36,14 @@ public class EpubIntegrationTests : IDisposable
 
         var writer = new Epub3Writer(templatePath);
         var converter = new AozoraEpub3Converter(writer, templatePath);
+
+        if (enableChapterDetection)
+        {
+            converter.SetChapterLevel(
+                64, false, false,
+                true, true, true, true, true,
+                false, false, false, false, false, false, "");
+        }
 
         // 第1パス: BookInfo 取得
         BookInfo bookInfo;
@@ -283,6 +291,44 @@ public class EpubIntegrationTests : IDisposable
         Assert.DoesNotContain("<p><div", allContent);
         Assert.DoesNotContain("<p id=", allContent.Split('\n')
             .FirstOrDefault(l => l.Contains("introduction")) ?? "");
+    }
+
+    [Fact]
+    public void Convert_NestedChapters_TocHasNestedOl()
+    {
+        // 大見出し＋中見出しのテキスト → 目次にネストされた<ol>が生成されること
+        const string aozoraText =
+            "テスト作品\n著者\n\n" +
+            "［＃改ページ］\n" +
+            "［＃大見出し］第一章　出発［＃大見出し終わり］\n\n" +
+            "［＃改ページ］\n" +
+            "［＃中見出し］１　旅立ち［＃中見出し終わり］\n" +
+            "本文テキスト。\n\n" +
+            "［＃改ページ］\n" +
+            "［＃中見出し］２　冒険［＃中見出し終わり］\n" +
+            "本文テキスト２。\n\n" +
+            "［＃改ページ］\n" +
+            "［＃大見出し］第二章　帰還［＃大見出し終わり］\n\n" +
+            "［＃改ページ］\n" +
+            "［＃中見出し］３　帰路［＃中見出し終わり］\n" +
+            "本文テキスト３。\n";
+
+        string epubPath = ConvertToEpub(aozoraText, _tempDir, "nested_toc", enableChapterDetection: true);
+        var entries = ReadEpubEntries(epubPath);
+
+        string nav = Encoding.UTF8.GetString(entries["OPS/xhtml/nav.xhtml"]);
+
+        // ネストされた<ol>が存在すること
+        Assert.Contains("<li><ol>", nav);
+        Assert.Contains("</ol></li>", nav);
+        // 大見出しと中見出しが両方存在
+        Assert.Contains("第一章", nav);
+        Assert.Contains("１　旅立ち", nav);
+
+        // NCXもネスト構造を持つこと
+        string ncx = Encoding.UTF8.GetString(entries["OPS/toc.ncx"]);
+        // navPointがネストされていること（閉じタグが複数出力）
+        Assert.Contains("</navPoint>", ncx);
     }
 
     [Fact]
