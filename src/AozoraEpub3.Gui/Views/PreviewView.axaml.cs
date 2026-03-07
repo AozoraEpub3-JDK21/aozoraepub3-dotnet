@@ -39,6 +39,7 @@ public partial class PreviewView : UserControl
             _currentVm.PropertyChanged -= OnViewModelPropertyChanged;
             _currentVm.FontChanged -= OnFontChanged;
             _currentVm.CssInjectionRequested -= OnCssInjectionRequested;
+            _currentVm.CssEditor.SaveAsRequested -= OnSaveAsCssRequested;
         }
 
         _currentVm = ViewModel;
@@ -49,6 +50,7 @@ public partial class PreviewView : UserControl
             _currentVm.PropertyChanged += OnViewModelPropertyChanged;
             _currentVm.FontChanged += OnFontChanged;
             _currentVm.CssInjectionRequested += OnCssInjectionRequested;
+            _currentVm.CssEditor.SaveAsRequested += OnSaveAsCssRequested;
         }
     }
 
@@ -171,6 +173,32 @@ public partial class PreviewView : UserControl
         {
             vm.GoToPageCommand.Execute(entry.SpineIndex);
         }
+    }
+
+    // ───── CSS 名前を付けて保存 ────────────────────────────────────────
+
+    private async Task<string?> OnSaveAsCssRequested(string cssText)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel is null) return null;
+
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save CSS As",
+            DefaultExtension = "css",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("CSS files") { Patterns = ["*.css"] },
+                new FilePickerFileType("All files") { Patterns = ["*"] }
+            ],
+            SuggestedFileName = "style.css"
+        });
+
+        if (file is null) return null;
+
+        var path = file.Path.LocalPath;
+        await System.IO.File.WriteAllTextAsync(path, cssText);
+        return path;
     }
 
     // ───── ファイルダイアログ ────────────────────────────────────────────

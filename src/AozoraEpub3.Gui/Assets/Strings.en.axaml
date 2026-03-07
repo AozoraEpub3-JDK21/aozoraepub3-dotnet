@@ -158,7 +158,8 @@
   <sys:String x:Key="Str_CssEditor_Toggle">CSS</sys:String>
   <sys:String x:Key="Str_CssEditor_Title">CSS Editor</sys:String>
   <sys:String x:Key="Str_CssEditor_Advanced">Advanced Mode</sys:String>
-  <sys:String x:Key="Str_CssEditor_Save">Save</sys:String>
+  <sys:String x:Key="Str_CssEditor_Overwrite">Overwrite</sys:String>
+  <sys:String x:Key="Str_CssEditor_SaveAs">Save As...</sys:String>
   <sys:String x:Key="Str_CssEditor_Reset">Reset</sys:String>
   <sys:String x:Key="Str_CssEditor_FontSize">Font Size</sys:String>
   <sys:String x:Key="Str_CssEditor_LineHeight">Line Height</sys:String>

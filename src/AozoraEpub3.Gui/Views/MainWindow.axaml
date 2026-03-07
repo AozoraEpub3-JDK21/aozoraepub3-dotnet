@@ -66,54 +66,61 @@
 
       <!-- ── サイドバー ── -->
       <SplitView.Pane>
-        <StackPanel Margin="0,12,0,0">
+        <Grid RowDefinitions="*,Auto">
 
-          <!-- ローカル変換 -->
-          <Button Content="{DynamicResource Str_Nav_LocalConvert}"
-                  Command="{Binding NavigateToCommand}"
-                  CommandParameter="local"
-                  HorizontalAlignment="Stretch"
-                  HorizontalContentAlignment="Left"
-                  Padding="16,12"
-                  Classes="nav-item" />
+          <!-- 上部ナビゲーション -->
+          <StackPanel Grid.Row="0" Margin="0,12,0,0">
 
-          <!-- Web 変換 -->
-          <Button Content="{DynamicResource Str_Nav_WebConvert}"
-                  Command="{Binding NavigateToCommand}"
-                  CommandParameter="web"
-                  HorizontalAlignment="Stretch"
-                  HorizontalContentAlignment="Left"
-                  Padding="16,12"
-                  Classes="nav-item" />
+            <!-- ローカル変換 -->
+            <Button Content="{DynamicResource Str_Nav_LocalConvert}"
+                    Command="{Binding NavigateToCommand}"
+                    CommandParameter="local"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="16,12"
+                    Classes="nav-item" />
 
-          <!-- 設定 -->
-          <Button Content="{DynamicResource Str_Nav_Settings}"
-                  Command="{Binding NavigateToCommand}"
-                  CommandParameter="settings"
-                  HorizontalAlignment="Stretch"
-                  HorizontalContentAlignment="Left"
-                  Padding="16,12"
-                  Classes="nav-item" />
+            <!-- Web 変換 -->
+            <Button Content="{DynamicResource Str_Nav_WebConvert}"
+                    Command="{Binding NavigateToCommand}"
+                    CommandParameter="web"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="16,12"
+                    Classes="nav-item" />
 
-          <!-- プレビュー -->
-          <Button Content="{DynamicResource Str_Nav_Preview}"
-                  Command="{Binding NavigateToCommand}"
-                  CommandParameter="preview"
-                  HorizontalAlignment="Stretch"
-                  HorizontalContentAlignment="Left"
-                  Padding="16,12"
-                  Classes="nav-item" />
+            <!-- プレビュー -->
+            <Button Content="{DynamicResource Str_Nav_Preview}"
+                    Command="{Binding NavigateToCommand}"
+                    CommandParameter="preview"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="16,12"
+                    Classes="nav-item" />
 
-          <!-- 検証 -->
-          <Button Content="{DynamicResource Str_Nav_Validate}"
-                  Command="{Binding NavigateToCommand}"
-                  CommandParameter="validate"
-                  HorizontalAlignment="Stretch"
-                  HorizontalContentAlignment="Left"
-                  Padding="16,12"
-                  Classes="nav-item" />
+            <!-- 検証 -->
+            <Button Content="{DynamicResource Str_Nav_Validate}"
+                    Command="{Binding NavigateToCommand}"
+                    CommandParameter="validate"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="16,12"
+                    Classes="nav-item" />
 
-        </StackPanel>
+          </StackPanel>
+
+          <!-- 下部: 設定（常に最下部） -->
+          <StackPanel Grid.Row="1" Margin="0,0,0,12">
+            <Button Content="{DynamicResource Str_Nav_Settings}"
+                    Command="{Binding NavigateToCommand}"
+                    CommandParameter="settings"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="16,12"
+                    Classes="nav-item" />
+          </StackPanel>
+
+        </Grid>
       </SplitView.Pane>
 
       <!-- ── メインコンテンツ（SPA ContentControl）── -->

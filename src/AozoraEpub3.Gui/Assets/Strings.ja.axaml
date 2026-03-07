@@ -158,7 +158,8 @@
   <sys:String x:Key="Str_CssEditor_Toggle">CSS</sys:String>
   <sys:String x:Key="Str_CssEditor_Title">CSSエディタ</sys:String>
   <sys:String x:Key="Str_CssEditor_Advanced">上級者モード</sys:String>
-  <sys:String x:Key="Str_CssEditor_Save">保存</sys:String>
+  <sys:String x:Key="Str_CssEditor_Overwrite">上書き保存</sys:String>
+  <sys:String x:Key="Str_CssEditor_SaveAs">名前を付けて保存</sys:String>
   <sys:String x:Key="Str_CssEditor_Reset">リセット</sys:String>
   <sys:String x:Key="Str_CssEditor_FontSize">フォントサイズ</sys:String>
   <sys:String x:Key="Str_CssEditor_LineHeight">行送り</sys:String>

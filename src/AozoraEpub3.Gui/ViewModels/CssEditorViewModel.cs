@@ -26,7 +26,7 @@ public sealed partial class CssEditorViewModel : ViewModelBase
 
     /// <summary>変更があるか（Save ボタン有効化用）</summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OverwriteSaveCommand))]
     [NotifyCanExecuteChangedFor(nameof(ResetCommand))]
     private bool _isDirty;
 
@@ -194,13 +194,13 @@ public sealed partial class CssEditorViewModel : ViewModelBase
     // ───── コマンド ─────────────────────────────────────────────────
 
     [RelayCommand(CanExecute = nameof(IsDirty))]
-    private void Save()
+    private void OverwriteSave()
     {
         if (_cssFilePath == null) return;
 
         try
         {
-            var css = IsAdvancedMode ? CssText : BuildCssFromForm();
+            var css = GetCurrentCss();
             File.WriteAllText(_cssFilePath, css);
             _originalCssText = css;
             IsDirty = false;
@@ -211,6 +211,22 @@ public sealed partial class CssEditorViewModel : ViewModelBase
             StatusMessage = $"Save failed: {ex.Message}";
         }
     }
+
+    /// <summary>名前を付けて保存を要求するイベント。View 側でファイルダイアログを表示する。</summary>
+    public event Func<string, Task<string?>>? SaveAsRequested;
+
+    [RelayCommand]
+    private async Task SaveAsAsync()
+    {
+        if (SaveAsRequested == null) return;
+
+        var css = GetCurrentCss();
+        var path = await SaveAsRequested.Invoke(css);
+        if (path != null)
+            StatusMessage = $"Saved: {Path.GetFileName(path)}";
+    }
+
+    private string GetCurrentCss() => IsAdvancedMode ? CssText : BuildCssFromForm();
 
     [RelayCommand(CanExecute = nameof(IsDirty))]
     private void Reset()

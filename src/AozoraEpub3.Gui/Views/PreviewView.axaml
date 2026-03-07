@@ -159,7 +159,7 @@
       <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- CSS エディタヘッダー -->
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto"
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto"
               Margin="8,4">
           <TextBlock Grid.Column="0"
                      Text="{DynamicResource Str_CssEditor_Title}"
@@ -174,10 +174,14 @@
                         Content="{DynamicResource Str_CssEditor_Advanced}"
                         Padding="8,2" FontSize="11" />
           <Button Grid.Column="3"
-                  Command="{Binding CssEditor.SaveCommand}"
-                  Content="{DynamicResource Str_CssEditor_Save}"
+                  Command="{Binding CssEditor.OverwriteSaveCommand}"
+                  Content="{DynamicResource Str_CssEditor_Overwrite}"
                   Padding="8,2" FontSize="11" Margin="4,0" />
           <Button Grid.Column="4"
+                  Command="{Binding CssEditor.SaveAsCommand}"
+                  Content="{DynamicResource Str_CssEditor_SaveAs}"
+                  Padding="8,2" FontSize="11" Margin="4,0" />
+          <Button Grid.Column="5"
                   Command="{Binding CssEditor.ResetCommand}"
                   Content="{DynamicResource Str_CssEditor_Reset}"
                   Padding="8,2" FontSize="11" />
