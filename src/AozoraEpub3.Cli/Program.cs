@@ -463,11 +463,14 @@ static void ConvertUrlToEpub(
     int downloadInterval, Dictionary<string, string> ini, bool vertical,
     int titleIndex, string outExt, string? dstPath)
 {
+    string outDir = dstPath ?? Directory.GetCurrentDirectory();
+
     List<string>? lines;
+    WebAozoraConverter? webConverter;
     try
     {
-        lines = Task.Run(() => WebAozoraConverter.ConvertToAozoraLinesAsync(
-            urlValue, webConfig, webSettings, downloadInterval)).GetAwaiter().GetResult();
+        (lines, webConverter) = Task.Run(() => WebAozoraConverter.ConvertToAozoraLinesWithConverterAsync(
+            urlValue, webConfig, webSettings, downloadInterval, outDir)).GetAwaiter().GetResult();
     }
     catch (Exception e)
     {
@@ -493,7 +496,9 @@ static void ConvertUrlToEpub(
     converterWeb.vertical = vertical;
 
     // BookInfo 取得（1パス目）
-    var imageInfoReaderWeb = new ImageInfoReader(true, "");
+    // ImageInfoReader: dstPath を親パスとして設定（画像ファイル参照用）
+    string dummySrc = Path.Combine(outDir, "web_source.txt");
+    var imageInfoReaderWeb = new ImageInfoReader(true, dummySrc);
     BookInfo bookInfoWeb;
     using (var webSrc1 = new StringReader(aozoraText))
     {
@@ -505,6 +510,14 @@ static void ConvertUrlToEpub(
     bookInfoWeb.TocVertical = !vertical ? false : true;
     bookInfoWeb.TitlePageType = BookInfo.TITLE_HORIZONTAL;
     bookInfoWeb.InsertTitleToc = true;
+    bookInfoWeb.InsertTitlePage = true;
+
+    // 表紙画像設定
+    if (webConverter?.CoverImagePath != null && File.Exists(webConverter.CoverImagePath))
+    {
+        bookInfoWeb.CoverFileName = "cover.jpg";
+        bookInfoWeb.InsertCoverPage = true;
+    }
 
     // 出力ファイル名を決定
     string urlTitle = bookInfoWeb.Title ?? "converted";
@@ -516,7 +529,6 @@ static void ConvertUrlToEpub(
         safeTitle = $"[{safeCreator}] {safeTitle}";
     }
 
-    string outDir = dstPath ?? Directory.GetCurrentDirectory();
     string outFile = Path.Combine(outDir, safeTitle + outExt);
 
     // 変換実行（2パス目）

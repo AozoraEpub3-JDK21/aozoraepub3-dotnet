@@ -51,6 +51,16 @@ public class WebAozoraConverter
     private string _baseUri = "";
     private string _pageBaseUri = "";
     private int _interval = 1500;
+    private string? _dstPath;
+
+    /// <summary>ダウンロード待ち画像リスト (srcUrl, localRelPath)</summary>
+    private readonly List<(string url, string localPath)> _pendingImageDownloads = new();
+
+    /// <summary>ダウンロード失敗した話のURL</summary>
+    private readonly List<string> _failedHrefs = new();
+
+    /// <summary>表紙画像のローカルパス（ダウンロード成功時にセット）</summary>
+    public string? CoverImagePath { get; private set; }
 
     private WebAozoraConverter(
         Dictionary<ExtractId, ExtractInfo[]> queryMap,
@@ -73,6 +83,7 @@ public class WebAozoraConverter
         string configPath,
         NarouFormatSettings settings,
         int interval = 1500,
+        string? dstPath = null,
         CancellationToken ct = default)
     {
         urlString = urlString.Trim();
@@ -95,10 +106,50 @@ public class WebAozoraConverter
         var converter = new WebAozoraConverter(queryMap, replaceMap, settings)
         {
             _interval = Math.Max(1000, interval),
-            _baseUri = baseUri
+            _baseUri = baseUri,
+            _dstPath = dstPath
         };
 
         return await converter.ConvertAsync(urlString, ct);
+    }
+
+    /// <summary>
+    /// 変換結果とコンバーターインスタンスを返す版。
+    /// コンバーターから表紙画像パス等のメタ情報を取得するため。
+    /// </summary>
+    public static async Task<(List<string>? lines, WebAozoraConverter? converter)> ConvertToAozoraLinesWithConverterAsync(
+        string urlString,
+        string configPath,
+        NarouFormatSettings settings,
+        int interval = 1500,
+        string? dstPath = null,
+        CancellationToken ct = default)
+    {
+        urlString = urlString.Trim();
+
+        int protoEnd = urlString.IndexOf("//", StringComparison.Ordinal) + 2;
+        int pathStart = urlString.IndexOf('/', protoEnd);
+        if (pathStart < 0) pathStart = urlString.Length;
+        string fqdn = urlString[protoEnd..pathStart];
+        string baseUri = urlString[..pathStart];
+
+        var queryMap = LoadQueryMap(fqdn, configPath);
+        if (queryMap.Count == 0)
+        {
+            LogAppender.Println($"サイトの定義がありません: {configPath}/{fqdn}/extract.txt");
+            return (null, null);
+        }
+
+        var replaceMap = LoadReplaceMap(fqdn, configPath);
+        var converter = new WebAozoraConverter(queryMap, replaceMap, settings)
+        {
+            _interval = Math.Max(1000, interval),
+            _baseUri = baseUri,
+            _dstPath = dstPath
+        };
+
+        var lines = await converter.ConvertAsync(urlString, ct);
+        return (lines, converter);
     }
 
     // ─── 内部変換ロジック ───────────────────────────────────────
@@ -144,13 +195,24 @@ public class WebAozoraConverter
         lines.Add("");
 
         // 表紙画像
+        string? coverLocalPath = null;
         var coverElems = GetExtractElements(doc, _queryMap.GetValueOrDefault(ExtractId.COVER_IMG));
         if (coverElems?.Length > 0)
         {
             string? coverSrc = coverElems[0].GetAttribute("src");
             if (!string.IsNullOrEmpty(coverSrc))
             {
-                // 将来: 画像ダウンロード対応
+                if (_dstPath != null)
+                {
+                    coverLocalPath = Path.Combine(_dstPath, "cover.jpg");
+                    // 表紙はPrintImageのURL解決のみ使い、保存先は直接指定
+                    string? coverSrcUrl = coverElems[0].GetAttribute("src");
+                    if (!string.IsNullOrEmpty(coverSrcUrl))
+                    {
+                        string resolvedUrl = ResolveImageUrl(coverSrcUrl);
+                        _pendingImageDownloads.Add((resolvedUrl, coverLocalPath));
+                    }
+                }
                 lines.Add("［＃挿絵（cover.jpg）入る］");
                 lines.Add("");
             }
@@ -304,11 +366,39 @@ public class WebAozoraConverter
                 catch (Exception e)
                 {
                     LogAppender.Println($" : 取得失敗 - {e.Message}");
+                    _failedHrefs.Add(chapterHref);
                     continue;
                 }
 
                 _pageBaseUri = chapterHref;
                 var chapterDoc = await ParseAsync(chapterHtml);
+
+                // コンテンツ検証: CONTENT_ARTICLE 要素が空なら再ダウンロード1回
+                var contentCheck = GetExtractElements(chapterDoc, _queryMap.GetValueOrDefault(ExtractId.CONTENT_ARTICLE));
+                if (contentCheck == null || contentCheck.Length == 0)
+                {
+                    LogAppender.Println("  本文要素なし、再取得中...");
+                    try
+                    {
+                        await Task.Delay(3000, ct);
+                        chapterHtml = await DownloadHtmlAsync(chapterHref, urlString, ct, 0);
+                        chapterDoc = await ParseAsync(chapterHtml);
+                        contentCheck = GetExtractElements(chapterDoc, _queryMap.GetValueOrDefault(ExtractId.CONTENT_ARTICLE));
+                        if (contentCheck == null || contentCheck.Length == 0)
+                        {
+                            LogAppender.Println("  再取得後も本文なし、スキップ");
+                            _failedHrefs.Add(chapterHref);
+                            continue;
+                        }
+                        LogAppender.Println("  再取得成功");
+                    }
+                    catch (Exception e)
+                    {
+                        LogAppender.Println($"  再取得失敗: {e.Message}");
+                        _failedHrefs.Add(chapterHref);
+                        continue;
+                    }
+                }
 
                 // 章タイトル (大見出し)
                 string? chapterTitle = GetExtractText(chapterDoc, _queryMap.GetValueOrDefault(ExtractId.CONTENT_CHAPTER));
@@ -341,6 +431,33 @@ public class WebAozoraConverter
         lines.Add("［＃改ページ］");
         lines.Add($"底本：　<a href=\"{urlString}\">{urlString}</a>");
         lines.Add($"変換日時：　{DateTime.Now:yyyy/MM/dd HH:mm:ss}");
+
+        // ── 画像ダウンロード ──
+        if (_dstPath != null && _pendingImageDownloads.Count > 0)
+        {
+            await DownloadPendingImagesAsync(urlString, ct);
+
+            // 表紙画像のパスを設定
+            if (coverLocalPath != null && File.Exists(coverLocalPath))
+                CoverImagePath = coverLocalPath;
+        }
+
+        // ── 失敗記録 ──
+        if (_failedHrefs.Count > 0)
+        {
+            LogAppender.Println($"{_failedHrefs.Count} 話のダウンロードに失敗しました");
+            if (_dstPath != null)
+            {
+                string failedFile = Path.Combine(_dstPath, "failed_downloads.txt");
+                try
+                {
+                    Directory.CreateDirectory(_dstPath);
+                    File.WriteAllLines(failedFile, _failedHrefs);
+                    LogAppender.Println($"失敗リスト: {failedFile}");
+                }
+                catch { /* ignore */ }
+            }
+        }
 
         return lines;
     }
@@ -637,31 +754,76 @@ public class WebAozoraConverter
 
     private void PrintImage(List<string> lines, IElement img)
     {
+        PrintImage(lines, img, null);
+    }
+
+    private void PrintImage(List<string> lines, IElement img, string? imageOutFile)
+    {
         string? src = img.GetAttribute("src");
         if (string.IsNullOrEmpty(src)) return;
 
-        // 相対/絶対URLを正規化してファイルパスを生成
+        // 相対/絶対URLを正規化してファイルパスを生成 + ダウンロードURL解決
         string imagePath;
         int idx = src.IndexOf("//", StringComparison.Ordinal);
         if (idx > 0)
         {
+            // 絶対URL (http:// or https://)
             imagePath = EscapeUrlToFile(src[(idx + 2)..]);
         }
         else if (idx == 0)
         {
+            // プロトコル相対URL (//domain/path)
             imagePath = EscapeUrlToFile(src[2..]);
+            src = _baseUri[.._baseUri.IndexOf("//", StringComparison.Ordinal)] + src;
         }
         else if (src[0] == '/')
         {
+            // 同ホスト絶対パス
             imagePath = "_" + EscapeUrlToFile(src);
+            src = _baseUri + src;
         }
         else
         {
+            // 相対パス
             imagePath = "__/" + EscapeUrlToFile(src);
+            if (_pageBaseUri.EndsWith("/")) src = _pageBaseUri + src;
+            else src = _pageBaseUri + "/" + src;
         }
 
         if (imagePath.EndsWith("/")) imagePath += "image.png";
-        lines.Add($"［＃挿絵（images/{imagePath}）入る］");
+
+        // 画像ダウンロード登録
+        if (_dstPath != null)
+        {
+            if (imageOutFile != null)
+            {
+                _pendingImageDownloads.Add((src, imageOutFile));
+            }
+            else
+            {
+                string localPath = Path.Combine(_dstPath, "images", imagePath);
+                _pendingImageDownloads.Add((src, localPath));
+            }
+        }
+
+        if (imageOutFile != null)
+        {
+            // 表紙: 注記はConvertAsync側で追加するためここでは何もしない
+        }
+        else
+        {
+            lines.Add($"［＃挿絵（images/{imagePath}）入る］");
+        }
+    }
+
+    /// <summary>画像srcを絶対URLに解決する</summary>
+    private string ResolveImageUrl(string src)
+    {
+        int idx = src.IndexOf("//", StringComparison.Ordinal);
+        if (idx > 0) return src; // 絶対URL
+        if (idx == 0) return _baseUri[.._baseUri.IndexOf("//", StringComparison.Ordinal)] + src;
+        if (src[0] == '/') return _baseUri + src;
+        return _pageBaseUri.EndsWith("/") ? _pageBaseUri + src : _pageBaseUri + "/" + src;
     }
 
     private static string EscapeUrlToFile(string url)
@@ -954,21 +1116,104 @@ public class WebAozoraConverter
         return WebUtility.HtmlDecode(html).Trim();
     }
 
-    // ─── HTTP ダウンロード ─────────────────────────────────────
+    // ─── 画像ダウンロード ─────────────────────────────────────
 
-    private async Task<string> DownloadHtmlAsync(string url, string? referer, CancellationToken ct)
+    private async Task DownloadPendingImagesAsync(string referer, CancellationToken ct)
     {
+        LogAppender.Println($"画像ダウンロード: {_pendingImageDownloads.Count} 件");
+        int success = 0, fail = 0;
+
+        foreach (var (url, localPath) in _pendingImageDownloads)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            // 既存ファイルはスキップ
+            if (File.Exists(localPath))
+            {
+                success++;
+                continue;
+            }
+
+            try
+            {
+                await DownloadFileAsync(url, localPath, referer, ct);
+                success++;
+            }
+            catch (Exception)
+            {
+                // リトライ1回
+                try
+                {
+                    await Task.Delay(3000, ct);
+                    await DownloadFileAsync(url, localPath, referer, ct);
+                    success++;
+                }
+                catch (OperationCanceledException) { break; }
+                catch (Exception e2)
+                {
+                    LogAppender.Println($"画像が取得できませんでした : {url} ({e2.Message})");
+                    fail++;
+                }
+            }
+
+            // レート制限
+            try { await Task.Delay(500, ct); }
+            catch (OperationCanceledException) { break; }
+        }
+
+        LogAppender.Println($"画像ダウンロード完了: 成功 {success}, 失敗 {fail}");
+    }
+
+    private async Task DownloadFileAsync(string url, string localPath, string? referer, CancellationToken ct)
+    {
+        // 親ディレクトリ作成
+        string? dir = Path.GetDirectoryName(localPath);
+        if (dir != null) Directory.CreateDirectory(dir);
+
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         if (referer != null)
             request.Headers.Add("Referer", referer);
-
-        // Cookie (extract.txt で定義されている場合)
         if (_queryMap.TryGetValue(ExtractId.COOKIE, out var cookieInfos) && cookieInfos.Length > 0)
             request.Headers.Add("Cookie", cookieInfos[0].Query);
 
-        using var response = await _http.SendAsync(request, ct);
+        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(ct);
+
+        await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
+        await using var fileStream = new FileStream(localPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        await contentStream.CopyToAsync(fileStream, ct);
+    }
+
+    // ─── HTTP ダウンロード ─────────────────────────────────────
+
+    private async Task<string> DownloadHtmlAsync(string url, string? referer, CancellationToken ct, int maxRetries = 2)
+    {
+        Exception? lastEx = null;
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            if (attempt > 0)
+            {
+                LogAppender.Println($"  リトライ {attempt}/{maxRetries}...");
+                await Task.Delay(3000, ct);
+            }
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                if (referer != null)
+                    request.Headers.Add("Referer", referer);
+
+                if (_queryMap.TryGetValue(ExtractId.COOKIE, out var cookieInfos) && cookieInfos.Length > 0)
+                    request.Headers.Add("Cookie", cookieInfos[0].Query);
+
+                using var response = await _http.SendAsync(request, ct);
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync(ct);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception e) { lastEx = e; }
+        }
+        throw lastEx!;
     }
 
     // ─── HTML パース ───────────────────────────────────────────

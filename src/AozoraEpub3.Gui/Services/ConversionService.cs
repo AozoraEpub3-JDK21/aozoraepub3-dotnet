@@ -138,9 +138,11 @@ public sealed class ConversionService
         IProgress<int>? progress,
         CancellationToken ct)
     {
-        // HTML取得 (async)
-        var lines = await WebAozoraConverter.ConvertToAozoraLinesAsync(
-            url, webConfigDir, narouSettings, downloadIntervalMs, ct);
+        var outDir = string.IsNullOrEmpty(outputDir) ? "." : outputDir;
+
+        // HTML取得 + 画像ダウンロード (async)
+        var (lines, webConverter) = await WebAozoraConverter.ConvertToAozoraLinesWithConverterAsync(
+            url, webConfigDir, narouSettings, downloadIntervalMs, outDir, ct);
 
         if (lines == null || lines.Count == 0)
             throw new InvalidOperationException($"Web変換に失敗しました: {url}");
@@ -163,23 +165,31 @@ public sealed class ConversionService
             var titleType = (BookInfo.TitleType)Math.Clamp(settings.TitleType, 0, 5);
 
             // 第1パス
+            string dummySrc = Path.Combine(outDir, "web_source.txt");
             BookInfo bookInfo;
             using (var reader1 = new StringReader(joinedText))
             {
-                var imageInfoReader1 = new ImageInfoReader(false, url);
+                var imageInfoReader1 = new ImageInfoReader(true, dummySrc);
                 bookInfo = converter.GetBookInfo(url, reader1, imageInfoReader1, titleType, false);
             }
 
             settings.ApplyTo(bookInfo, converter);
 
-            var outDir = string.IsNullOrEmpty(outputDir) ? "." : outputDir;
+            // 表紙画像設定
+            if (webConverter?.CoverImagePath != null && File.Exists(webConverter.CoverImagePath))
+            {
+                bookInfo.CoverFileName = "cover.jpg";
+                bookInfo.InsertCoverPage = true;
+            }
+            bookInfo.InsertTitlePage = true;
+
             var outName = BuildOutputName(bookInfo, url, settings.OutputExtension);
             var outPath = Path.Combine(outDir, outName);
 
             ct.ThrowIfCancellationRequested();
 
             // 第2パス
-            var imageInfoReader2 = new ImageInfoReader(false, url);
+            var imageInfoReader2 = new ImageInfoReader(true, dummySrc);
             using var reader2 = new StringReader(joinedText);
             epub3Writer.Write(converter, reader2, url, "txt", outPath, bookInfo, imageInfoReader2);
         }, ct);
