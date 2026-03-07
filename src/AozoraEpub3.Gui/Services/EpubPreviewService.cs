@@ -229,6 +229,67 @@ public sealed class EpubPreviewService : IDisposable
         }
     }
 
+    /// <summary>展開済み EPUB 内の CSS ファイルパスを返す（OPS/css/ 配下）。</summary>
+    public List<CssFileInfo> GetCssFiles()
+    {
+        var result = new List<CssFileInfo>();
+        if (_extractDir == null) return result;
+
+        // OPF から CSS manifest items を探す
+        var containerPath = Path.Combine(_extractDir, "META-INF", "container.xml");
+        if (!File.Exists(containerPath)) return result;
+
+        var containerDoc = XDocument.Load(containerPath);
+        XNamespace cns = "urn:oasis:names:tc:opendocument:xmlns:container";
+        var rootFilePath = containerDoc.Descendants(cns + "rootfile")
+            .FirstOrDefault()?.Attribute("full-path")?.Value;
+        if (rootFilePath == null) return result;
+
+        var opfFullPath = Path.Combine(_extractDir, rootFilePath.Replace('/', Path.DirectorySeparatorChar));
+        var opfDir = Path.GetDirectoryName(opfFullPath)!;
+
+        var opfDoc = XDocument.Load(opfFullPath);
+        XNamespace opfNs = "http://www.idpf.org/2007/opf";
+
+        foreach (var item in opfDoc.Descendants(opfNs + "item"))
+        {
+            var mediaType = item.Attribute("media-type")?.Value;
+            var href = item.Attribute("href")?.Value;
+            if (mediaType == "text/css" && href != null)
+            {
+                var absPath = Path.GetFullPath(Path.Combine(opfDir, href.Replace('/', Path.DirectorySeparatorChar)));
+                if (File.Exists(absPath))
+                    result.Add(new CssFileInfo(href, absPath));
+            }
+        }
+
+        // OPF manifest に無い場合でも css/ ディレクトリ内を探す
+        if (result.Count == 0)
+        {
+            var cssDir = Path.Combine(opfDir, "css");
+            if (Directory.Exists(cssDir))
+            {
+                foreach (var f in Directory.GetFiles(cssDir, "*.css"))
+                    result.Add(new CssFileInfo(Path.GetFileName(f), f));
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>EPUB が縦書きかどうかを CSS から判定する。</summary>
+    public bool IsVertical()
+    {
+        var cssFiles = GetCssFiles();
+        foreach (var css in cssFiles)
+        {
+            var content = File.ReadAllText(css.AbsolutePath);
+            if (content.Contains("vertical-rl"))
+                return true;
+        }
+        return false;
+    }
+
     public void Dispose() => Close();
 }
 
@@ -237,3 +298,6 @@ public record SpineItem(string Id, string Href, string AbsolutePath);
 
 /// <summary>目次の1項目</summary>
 public record TocEntry(string Label, string Href, int SpineIndex);
+
+/// <summary>EPUB内CSSファイル情報</summary>
+public record CssFileInfo(string Href, string AbsolutePath);

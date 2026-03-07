@@ -14,6 +14,27 @@ public sealed partial class PreviewViewModel : ViewModelBase, IDisposable
 {
     private readonly EpubPreviewService _previewService = new();
 
+    // ───── CSS エディタ ────────────────────────────────────────────────
+
+    /// <summary>CSS エディタの ViewModel</summary>
+    public CssEditorViewModel CssEditor { get; } = new();
+
+    public PreviewViewModel()
+    {
+        CssEditor.CssChanged += OnCssChanged;
+    }
+
+    private void OnCssChanged(string cssText)
+    {
+        // CSS ファイルパスを取得して WebView2 に反映
+        var cssFiles = _previewService.GetCssFiles();
+        var target = cssFiles.FirstOrDefault(c =>
+            c.Href.Contains("vertical") || c.Href.Contains("horizontal"))
+            ?? cssFiles.FirstOrDefault();
+        if (target != null)
+            CssInjectionRequested?.Invoke(cssText, target.AbsolutePath);
+    }
+
     // ───── プロパティ ──────────────────────────────────────────────────
 
     /// <summary>現在開いている EPUB ファイルパス</summary>
@@ -114,6 +135,17 @@ public sealed partial class PreviewViewModel : ViewModelBase, IDisposable
                 TocItems.Add(entry);
 
             StatusMessage = $"Loaded: {Path.GetFileName(path)}";
+
+            // CSS エディタに EPUB の CSS を読み込む
+            CssEditor.LoadFromEpub(_previewService);
+
+            // ソースマッピング生成
+            try
+            {
+                SourceMappingService.GenerateAndSave(_previewService, path);
+            }
+            catch { /* ソースマッピング生成失敗は無視 */ }
+
             NavigateToCurrentPage();
         }
         catch (Exception ex)
@@ -152,6 +184,19 @@ public sealed partial class PreviewViewModel : ViewModelBase, IDisposable
 
     [RelayCommand]
     private void ToggleToc() => IsTocOpen = !IsTocOpen;
+
+    [RelayCommand]
+    private void Validate()
+    {
+        if (IsEpubLoaded)
+            ValidateRequested?.Invoke(EpubFilePath);
+    }
+
+    /// <summary>CSS 変更を通知するイベント。引数: CSS テキスト, CSS ファイルパス。</summary>
+    public event Action<string, string>? CssInjectionRequested;
+
+    /// <summary>プレビュー中の EPUB を検証する要求。引数: EPUB ファイルパス。</summary>
+    public event Action<string>? ValidateRequested;
 
     /// <summary>最大化モードのトグルを親に要求するイベント。</summary>
     public event Action? ToggleMaximizeRequested;

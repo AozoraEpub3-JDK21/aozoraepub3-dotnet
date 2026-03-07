@@ -104,6 +104,15 @@
                   Padding="16,12"
                   Classes="nav-item" />
 
+          <!-- 検証 -->
+          <Button Content="{DynamicResource Str_Nav_Validate}"
+                  Command="{Binding NavigateToCommand}"
+                  CommandParameter="validate"
+                  HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Left"
+                  Padding="16,12"
+                  Classes="nav-item" />
+
         </StackPanel>
       </SplitView.Pane>
 

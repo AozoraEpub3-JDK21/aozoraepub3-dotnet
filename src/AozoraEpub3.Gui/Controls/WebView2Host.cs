@@ -263,6 +263,22 @@ public sealed class WebView2Host : NativeControlHost, IDisposable
         })();
         """;
 
+    /// <summary>展開済み EPUB の CSS ファイルを上書きして WebView2 をリロードする。</summary>
+    public async void InjectCss(string cssText, string cssFilePath)
+    {
+        if (!_isInitialized || _coreWebView == null) return;
+
+        // CSS ファイルを直接上書き（展開済み一時ディレクトリ内）
+        try
+        {
+            File.WriteAllText(cssFilePath, cssText);
+        }
+        catch { return; }
+
+        // ページをリロード
+        _coreWebView.Reload();
+    }
+
     /// <summary>指定 URI にナビゲートする。</summary>
     public void Navigate(string uri)
     {

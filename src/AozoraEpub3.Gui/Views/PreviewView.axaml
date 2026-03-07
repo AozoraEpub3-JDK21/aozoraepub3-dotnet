@@ -77,8 +77,11 @@
 
     <!-- EPUB 読み込み済みのコンテンツ -->
     <Grid Grid.Row="1"
-          ColumnDefinitions="Auto,Auto,Auto,*"
+          RowDefinitions="*,Auto"
           IsVisible="{Binding IsEpubLoaded}">
+
+    <Grid Grid.Row="0"
+          ColumnDefinitions="Auto,Auto,Auto,*">
 
       <!-- ────── 目次トグルボタン（常に表示）────── -->
       <ToggleButton Grid.Column="0"
@@ -146,6 +149,131 @@
     </Grid>
 
     <!-- ════════════════════════════════════════════════
+         Row 1 (inner): CSS エディタパネル（トグル表示）
+         ════════════════════════════════════════════════ -->
+    <Border Grid.Row="1"
+            IsVisible="{Binding CssEditor.IsVisible}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="0,1,0,0"
+            MaxHeight="320">
+      <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- CSS エディタヘッダー -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto"
+              Margin="8,4">
+          <TextBlock Grid.Column="0"
+                     Text="{DynamicResource Str_CssEditor_Title}"
+                     FontSize="13" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1"
+                     Text="{Binding CssEditor.StatusMessage}"
+                     FontSize="11" Opacity="0.6"
+                     VerticalAlignment="Center" Margin="12,0" />
+          <ToggleButton Grid.Column="2"
+                        IsChecked="{Binding CssEditor.IsAdvancedMode}"
+                        Content="{DynamicResource Str_CssEditor_Advanced}"
+                        Padding="8,2" FontSize="11" />
+          <Button Grid.Column="3"
+                  Command="{Binding CssEditor.SaveCommand}"
+                  Content="{DynamicResource Str_CssEditor_Save}"
+                  Padding="8,2" FontSize="11" Margin="4,0" />
+          <Button Grid.Column="4"
+                  Command="{Binding CssEditor.ResetCommand}"
+                  Content="{DynamicResource Str_CssEditor_Reset}"
+                  Padding="8,2" FontSize="11" />
+        </Grid>
+
+        <!-- 初心者モード: フォーム -->
+        <ScrollViewer Grid.Row="1"
+                      IsVisible="{Binding !CssEditor.IsAdvancedMode}"
+                      Padding="8,0">
+          <StackPanel Spacing="6">
+
+            <!-- 書字方向 -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <RadioButton Content="{DynamicResource Str_Setting_Vertical}"
+                           IsChecked="{Binding CssEditor.IsVertical}" />
+              <RadioButton Content="{DynamicResource Str_Setting_Horizontal}"
+                           IsChecked="{Binding !CssEditor.IsVertical}" />
+            </StackPanel>
+
+            <!-- フォントサイズ / 行送り -->
+            <Grid ColumnDefinitions="Auto,100,24,Auto,100" Margin="0,4">
+              <TextBlock Grid.Column="0"
+                         Text="{DynamicResource Str_CssEditor_FontSize}"
+                         VerticalAlignment="Center" FontSize="12" Margin="0,0,8,0" />
+              <NumericUpDown Grid.Column="1"
+                             Value="{Binding CssEditor.FontSize}"
+                             Minimum="50" Maximum="300" Increment="5"
+                             FormatString="0'%'"
+                             FontSize="12" />
+              <Panel Grid.Column="2" />
+              <TextBlock Grid.Column="3"
+                         Text="{DynamicResource Str_CssEditor_LineHeight}"
+                         VerticalAlignment="Center" FontSize="12" Margin="0,0,8,0" />
+              <NumericUpDown Grid.Column="4"
+                             Value="{Binding CssEditor.LineHeight}"
+                             Minimum="1.0" Maximum="3.0" Increment="0.1"
+                             FormatString="0.0"
+                             FontSize="12" />
+            </Grid>
+
+            <!-- ページマージン -->
+            <TextBlock Text="{DynamicResource Str_CssEditor_PageMargin}"
+                       FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0" />
+            <Grid ColumnDefinitions="Auto,80,8,Auto,80,8,Auto,80,8,Auto,80">
+              <TextBlock Grid.Column="0" Text="Top" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+              <TextBox Grid.Column="1" Text="{Binding CssEditor.PageMarginTop}" FontSize="11" />
+              <TextBlock Grid.Column="3" Text="Right" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+              <TextBox Grid.Column="4" Text="{Binding CssEditor.PageMarginRight}" FontSize="11" />
+              <TextBlock Grid.Column="6" Text="Bottom" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+              <TextBox Grid.Column="7" Text="{Binding CssEditor.PageMarginBottom}" FontSize="11" />
+              <TextBlock Grid.Column="9" Text="Left" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+              <TextBox Grid.Column="10" Text="{Binding CssEditor.PageMarginLeft}" FontSize="11" />
+            </Grid>
+
+            <!-- Body マージン -->
+            <TextBlock Text="{DynamicResource Str_CssEditor_BodyMargin}"
+                       FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0" />
+            <Grid ColumnDefinitions="Auto,80,8,Auto,80,8,Auto,80,8,Auto,80">
+              <TextBlock Grid.Column="0" Text="Top" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+              <TextBox Grid.Column="1" Text="{Binding CssEditor.BodyMarginTop}" FontSize="11" />
+              <TextBlock Grid.Column="3" Text="Right" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+              <TextBox Grid.Column="4" Text="{Binding CssEditor.BodyMarginRight}" FontSize="11" />
+              <TextBlock Grid.Column="6" Text="Bottom" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+              <TextBox Grid.Column="7" Text="{Binding CssEditor.BodyMarginBottom}" FontSize="11" />
+              <TextBlock Grid.Column="9" Text="Left" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0" />
+              <TextBox Grid.Column="10" Text="{Binding CssEditor.BodyMarginLeft}" FontSize="11" />
+            </Grid>
+
+            <!-- Bold/Gothic 設定 -->
+            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4">
+              <CheckBox Content="{DynamicResource Str_CssEditor_BoldGothic}"
+                        IsChecked="{Binding CssEditor.BoldUseGothic}" FontSize="12" />
+              <CheckBox Content="{DynamicResource Str_CssEditor_GothicBold}"
+                        IsChecked="{Binding CssEditor.GothicUseBold}" FontSize="12" />
+            </StackPanel>
+
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- 上級者モード: テキストエディタ -->
+        <TextBox Grid.Row="1"
+                 IsVisible="{Binding CssEditor.IsAdvancedMode}"
+                 Text="{Binding CssEditor.CssText}"
+                 AcceptsReturn="True"
+                 TextWrapping="NoWrap"
+                 FontFamily="Consolas, Courier New, monospace"
+                 FontSize="12"
+                 MinHeight="180"
+                 Margin="8,0" />
+
+      </Grid>
+    </Border>
+
+    </Grid>
+
+    <!-- ════════════════════════════════════════════════
          Row 2: ボトムツールバー
          ════════════════════════════════════════════════ -->
     <Border Grid.Row="2"
@@ -196,6 +324,14 @@
                     MinWidth="140"
                     FontSize="12"
                     VerticalAlignment="Center" />
+          <ToggleButton IsChecked="{Binding CssEditor.IsVisible}"
+                       Content="{DynamicResource Str_CssEditor_Toggle}"
+                       Padding="8,4"
+                       FontSize="12" />
+          <Button x:Name="ValidateButton"
+                  Content="{DynamicResource Str_Validate_PreviewButton}"
+                  Padding="8,4"
+                  FontSize="12" />
           <Button x:Name="ToolbarOpenButton"
                   Content="{DynamicResource Str_Preview_OpenEpub}"
                   Padding="12,4" />

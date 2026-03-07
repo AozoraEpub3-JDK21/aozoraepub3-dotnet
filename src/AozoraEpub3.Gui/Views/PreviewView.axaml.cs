@@ -38,6 +38,7 @@ public partial class PreviewView : UserControl
             _currentVm.NavigationRequested -= OnNavigationRequested;
             _currentVm.PropertyChanged -= OnViewModelPropertyChanged;
             _currentVm.FontChanged -= OnFontChanged;
+            _currentVm.CssInjectionRequested -= OnCssInjectionRequested;
         }
 
         _currentVm = ViewModel;
@@ -47,6 +48,7 @@ public partial class PreviewView : UserControl
             _currentVm.NavigationRequested += OnNavigationRequested;
             _currentVm.PropertyChanged += OnViewModelPropertyChanged;
             _currentVm.FontChanged += OnFontChanged;
+            _currentVm.CssInjectionRequested += OnCssInjectionRequested;
         }
     }
 
@@ -70,6 +72,11 @@ public partial class PreviewView : UserControl
         _webViewHost?.SetFont(fontFamily);
     }
 
+    private void OnCssInjectionRequested(string cssText, string cssFilePath)
+    {
+        _webViewHost?.InjectCss(cssText, cssFilePath);
+    }
+
     // ───── Loaded ─────────────────────────────────────────────────────────
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -87,6 +94,10 @@ public partial class PreviewView : UserControl
         // 最大化ボタン
         if (this.FindControl<Button>("MaximizeButton") is { } maxBtn)
             maxBtn.Click += (_, _) => _currentVm?.RequestToggleMaximize();
+
+        // 検証ボタン
+        if (this.FindControl<Button>("ValidateButton") is { } valBtn)
+            valBtn.Click += (_, _) => _currentVm?.ValidateCommand.Execute(null);
 
         // 目次リストの選択変更 + キー操作
         if (this.FindControl<ListBox>("TocListBox") is { } tocList)

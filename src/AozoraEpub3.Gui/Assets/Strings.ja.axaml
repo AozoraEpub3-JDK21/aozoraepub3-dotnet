@@ -154,4 +154,32 @@
   <sys:String x:Key="Str_Preview_Prev">&lt;</sys:String>
   <sys:String x:Key="Str_Preview_Next">&gt;</sys:String>
 
+  <!-- ===== CSSエディタ ===== -->
+  <sys:String x:Key="Str_CssEditor_Toggle">CSS</sys:String>
+  <sys:String x:Key="Str_CssEditor_Title">CSSエディタ</sys:String>
+  <sys:String x:Key="Str_CssEditor_Advanced">上級者モード</sys:String>
+  <sys:String x:Key="Str_CssEditor_Save">保存</sys:String>
+  <sys:String x:Key="Str_CssEditor_Reset">リセット</sys:String>
+  <sys:String x:Key="Str_CssEditor_FontSize">フォントサイズ</sys:String>
+  <sys:String x:Key="Str_CssEditor_LineHeight">行送り</sys:String>
+  <sys:String x:Key="Str_CssEditor_PageMargin">ページマージン</sys:String>
+  <sys:String x:Key="Str_CssEditor_BodyMargin">本文マージン</sys:String>
+  <sys:String x:Key="Str_CssEditor_BoldGothic">太字→ゴシック</sys:String>
+  <sys:String x:Key="Str_CssEditor_GothicBold">ゴシック→太字</sys:String>
+
+  <!-- ===== epubcheck 検証 ===== -->
+  <sys:String x:Key="Str_Nav_Validate">検証</sys:String>
+  <sys:String x:Key="Str_Validate_Title">EPUB検証</sys:String>
+  <sys:String x:Key="Str_Validate_Run">検証実行</sys:String>
+  <sys:String x:Key="Str_Validate_Running">検証中...</sys:String>
+  <sys:String x:Key="Str_Validate_OpenEpub">EPUBを選択...</sys:String>
+  <sys:String x:Key="Str_Validate_JarPath">epubcheck JARパス</sys:String>
+  <sys:String x:Key="Str_Validate_JarPathPlaceholder">epubcheck.jar のパスを指定</sys:String>
+  <sys:String x:Key="Str_Validate_Browse">参照...</sys:String>
+  <sys:String x:Key="Str_Validate_NoJar">epubcheck.jar が設定されていません。設定画面で指定してください。</sys:String>
+  <sys:String x:Key="Str_Validate_NoErrors">エラーなし — 検証に通過しました</sys:String>
+  <sys:String x:Key="Str_Validate_ErrorCount">{0} 件のエラー、{1} 件の警告</sys:String>
+  <sys:String x:Key="Str_Validate_PreviewButton">検証</sys:String>
+  <sys:String x:Key="Str_SettingsPage_EpubcheckJar">epubcheck JARパス</sys:String>
+
 </ResourceDictionary>

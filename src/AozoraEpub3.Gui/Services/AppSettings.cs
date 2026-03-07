@@ -82,6 +82,7 @@ public sealed class GuiSettings
     public int DownloadIntervalMs { get; set; } = 1500;
     public string AppLanguage { get; set; } = "ja";
     public string AppTheme { get; set; } = "default";
+    public string EpubcheckJarPath { get; set; } = "";
 }
 
 /// <summary>

@@ -54,4 +54,10 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
         };
         LocalizationService.SetTheme(variant);
     }
+
+    // ───── epubcheck ─────────────────────────────────────────────────────────
+
+    /// <summary>epubcheck.jar のパス</summary>
+    [ObservableProperty]
+    private string _epubcheckJarPath = "";
 }

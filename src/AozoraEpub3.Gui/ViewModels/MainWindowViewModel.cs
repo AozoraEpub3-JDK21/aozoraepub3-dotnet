@@ -17,6 +17,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public WebConvertViewModel WebConvertVm { get; } = new();
     public SettingsPageViewModel SettingsVm { get; } = new();
     public PreviewViewModel PreviewVm { get; } = new();
+    public ValidateViewModel ValidateVm { get; } = new();
 
     // ───── SPA ルーティング ──────────────────────────────────────────────────
 
@@ -32,6 +33,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _currentPage = LocalConvertVm;
         LocalConvertVm.OnConversionCompleted = OpenPreview;
         PreviewVm.ToggleMaximizeRequested += () => IsPreviewMaximized = !IsPreviewMaximized;
+        PreviewVm.ValidateRequested += OnValidateRequested;
+        ValidateVm.JumpToFileRequested += OnJumpToFile;
         LoadSettings();
     }
 
@@ -48,6 +51,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             "web"      => WebConvertVm,
             "settings" => SettingsVm,
             "preview"  => PreviewVm,
+            "validate" => ValidateVm,
             _          => LocalConvertVm
         };
     }
@@ -86,6 +90,32 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     // ───── プレビュー連携 ────────────────────────────────────────────────────
 
+    private void OnValidateRequested(string epubPath)
+    {
+        ValidateVm.ValidateCurrentEpub(epubPath, ValidateVm.JarPath);
+        CurrentPage = ValidateVm;
+    }
+
+    private void OnJumpToFile(string fileName)
+    {
+        // エラー箇所のファイル名からプレビューのスパインインデックスを特定してジャンプ
+        if (!PreviewVm.IsEpubLoaded) return;
+
+        // ソースマッピングからファイル名→スパインインデックスを検索
+        var metaPath = SourceMappingService.GetMetaFilePath(PreviewVm.EpubFilePath);
+        var map = SourceMappingService.Load(metaPath);
+        if (map == null) return;
+
+        var chapter = map.Chapters.FirstOrDefault(c =>
+            c.Href.EndsWith(fileName, StringComparison.OrdinalIgnoreCase) ||
+            fileName.EndsWith(c.Href, StringComparison.OrdinalIgnoreCase));
+        if (chapter != null)
+        {
+            PreviewVm.GoToPageCommand.Execute(chapter.SpineIndex);
+            CurrentPage = PreviewVm;
+        }
+    }
+
     /// <summary>指定 EPUB をプレビュータブで開く（変換完了後の自動遷移用）。</summary>
     public void OpenPreview(string epubPath)
     {
@@ -114,6 +144,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             SettingsVm.SelectedTheme = s.AppTheme;
         }
+        if (!string.IsNullOrEmpty(s.EpubcheckJarPath))
+        {
+            ValidateVm.JarPath = s.EpubcheckJarPath;
+            SettingsVm.EpubcheckJarPath = s.EpubcheckJarPath;
+        }
     }
 
     /// <summary>終了時に現在の設定を保存する。</summary>
@@ -125,6 +160,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         s.DownloadIntervalMs   = WebConvertVm.DownloadIntervalMs;
         s.AppLanguage          = LocalizationService.CurrentLanguage;
         s.AppTheme             = SettingsVm.SelectedTheme;
+        s.EpubcheckJarPath     = ValidateVm.JarPath;
         AppSettingsStorage.Save(s);
     }
 }

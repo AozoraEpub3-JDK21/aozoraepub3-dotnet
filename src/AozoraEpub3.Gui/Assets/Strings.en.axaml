@@ -154,4 +154,32 @@
   <sys:String x:Key="Str_Preview_Prev">&lt;</sys:String>
   <sys:String x:Key="Str_Preview_Next">&gt;</sys:String>
 
+  <!-- ===== CSS Editor ===== -->
+  <sys:String x:Key="Str_CssEditor_Toggle">CSS</sys:String>
+  <sys:String x:Key="Str_CssEditor_Title">CSS Editor</sys:String>
+  <sys:String x:Key="Str_CssEditor_Advanced">Advanced Mode</sys:String>
+  <sys:String x:Key="Str_CssEditor_Save">Save</sys:String>
+  <sys:String x:Key="Str_CssEditor_Reset">Reset</sys:String>
+  <sys:String x:Key="Str_CssEditor_FontSize">Font Size</sys:String>
+  <sys:String x:Key="Str_CssEditor_LineHeight">Line Height</sys:String>
+  <sys:String x:Key="Str_CssEditor_PageMargin">Page Margin</sys:String>
+  <sys:String x:Key="Str_CssEditor_BodyMargin">Body Margin</sys:String>
+  <sys:String x:Key="Str_CssEditor_BoldGothic">Bold → Gothic</sys:String>
+  <sys:String x:Key="Str_CssEditor_GothicBold">Gothic → Bold</sys:String>
+
+  <!-- ===== epubcheck Validation ===== -->
+  <sys:String x:Key="Str_Nav_Validate">Validate</sys:String>
+  <sys:String x:Key="Str_Validate_Title">EPUB Validation</sys:String>
+  <sys:String x:Key="Str_Validate_Run">Run Validation</sys:String>
+  <sys:String x:Key="Str_Validate_Running">Validating...</sys:String>
+  <sys:String x:Key="Str_Validate_OpenEpub">Select EPUB...</sys:String>
+  <sys:String x:Key="Str_Validate_JarPath">epubcheck JAR Path</sys:String>
+  <sys:String x:Key="Str_Validate_JarPathPlaceholder">Path to epubcheck.jar</sys:String>
+  <sys:String x:Key="Str_Validate_Browse">Browse...</sys:String>
+  <sys:String x:Key="Str_Validate_NoJar">epubcheck.jar not configured. Set it in Settings.</sys:String>
+  <sys:String x:Key="Str_Validate_NoErrors">No errors — validation passed</sys:String>
+  <sys:String x:Key="Str_Validate_ErrorCount">{0} error(s), {1} warning(s)</sys:String>
+  <sys:String x:Key="Str_Validate_PreviewButton">Validate</sys:String>
+  <sys:String x:Key="Str_SettingsPage_EpubcheckJar">epubcheck JAR Path</sys:String>
+
 </ResourceDictionary>

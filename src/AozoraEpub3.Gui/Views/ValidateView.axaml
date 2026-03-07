@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AozoraEpub3.Gui.ViewModels"
+             xmlns:svc="using:AozoraEpub3.Gui.Services"
+             x:Class="AozoraEpub3.Gui.Views.ValidateView"
+             x:DataType="vm:ValidateViewModel">
+
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="16">
+
+    <!-- Row 0: タイトル -->
+    <TextBlock Grid.Row="0"
+               Text="{DynamicResource Str_Validate_Title}"
+               FontSize="18" FontWeight="SemiBold"
+               Margin="0,0,0,12" />
+
+    <!-- Row 1: epubcheck JAR パス設定 -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
+      <TextBlock Grid.Column="0"
+                 Text="{DynamicResource Str_Validate_JarPath}"
+                 VerticalAlignment="Center"
+                 FontSize="13" Margin="0,0,8,0" />
+      <TextBox Grid.Column="1"
+               Text="{Binding JarPath}"
+               Watermark="{DynamicResource Str_Validate_JarPathPlaceholder}"
+               FontSize="12" />
+      <Button Grid.Column="2"
+              x:Name="BrowseJarButton"
+              Content="{DynamicResource Str_Validate_Browse}"
+              Padding="10,4" Margin="4,0,0,0" />
+    </Grid>
+
+    <!-- Row 2: EPUB ファイル + 実行ボタン -->
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,12">
+      <TextBlock Grid.Column="0"
+                 Text="EPUB:"
+                 VerticalAlignment="Center"
+                 FontSize="13" Margin="0,0,8,0" />
+      <TextBox Grid.Column="1"
+               Text="{Binding EpubFilePath}"
+               IsReadOnly="True"
+               FontSize="12" />
+      <Button Grid.Column="2"
+              x:Name="BrowseEpubButton"
+              Content="{DynamicResource Str_Validate_OpenEpub}"
+              Padding="10,4" Margin="4,0" />
+      <Button Grid.Column="3"
+              Command="{Binding RunValidationCommand}"
+              Padding="14,6">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <TextBlock Text="{DynamicResource Str_Validate_Run}"
+                     IsVisible="{Binding !IsValidating}" />
+          <TextBlock Text="{DynamicResource Str_Validate_Running}"
+                     IsVisible="{Binding IsValidating}" />
+        </StackPanel>
+      </Button>
+    </Grid>
+
+    <!-- Row 3: 検証結果リスト -->
+    <Border Grid.Row="3"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="1" CornerRadius="4">
+      <Grid RowDefinitions="Auto,*">
+        <!-- サマリー -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                Padding="8,6">
+          <TextBlock Text="{Binding SummaryMessage}"
+                     FontSize="13" FontWeight="SemiBold" />
+        </Border>
+
+        <!-- メッセージ一覧 -->
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding Messages}"
+                 SelectedItem="{Binding SelectedMessage}"
+                 BorderThickness="0">
+          <ListBox.ItemTemplate>
+            <DataTemplate DataType="{x:Type svc:EpubcheckMessage}">
+              <TextBlock Text="{Binding DisplayText}"
+                         FontSize="12"
+                         FontFamily="Consolas, Courier New, monospace"
+                         TextWrapping="Wrap"
+                         Padding="4,2" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+    </Border>
+
+    <!-- Row 4: ステータスバー -->
+    <TextBlock Grid.Row="4"
+               Text="{Binding StatusMessage}"
+               FontSize="11" Opacity="0.6"
+               Margin="0,6,0,0" />
+
+  </Grid>
+
+</UserControl>
