@@ -61,7 +61,7 @@ public class ImageInfoReader
     /// <summary>パストラバーサルを防止して画像ファイルパスを取得</summary>
     public string GetImageFilePathSafe(string fileName)
     {
-        string baseDir = Path.GetFullPath(_srcParentPath);
+        string baseDir = Path.GetFullPath(_srcParentPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         string resolved = Path.GetFullPath(_srcParentPath + fileName);
         if (!resolved.StartsWith(baseDir + Path.DirectorySeparatorChar) &&
             !resolved.Equals(baseDir, StringComparison.Ordinal))
