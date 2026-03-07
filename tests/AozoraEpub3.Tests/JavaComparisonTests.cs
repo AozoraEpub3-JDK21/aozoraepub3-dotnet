@@ -309,6 +309,12 @@ public class JavaComparisonTests
             content = content.Replace("</div><div class=\"clear\"></div>", "");
             // fullsp span → 全角スペースに正規化（SpaceHyphenation差異吸収）
             content = content.Replace("<span class=\"fullsp\"> </span>", "\u3000");
+            // tcy 二重ネスト正規化（Java版バグ: 明示的縦中横内の文字に自動縦中横を二重適用）
+            // <span class="tcy"><span><span class="tcy"><span>XX</span></span></span></span>
+            // → <span class="tcy"><span>XX</span></span>
+            content = Regex.Replace(content,
+                @"<span class=""tcy""><span><span class=""tcy""><span>(.*?)</span></span></span></span>",
+                "<span class=\"tcy\"><span>$1</span></span>");
         }
 
         return content;

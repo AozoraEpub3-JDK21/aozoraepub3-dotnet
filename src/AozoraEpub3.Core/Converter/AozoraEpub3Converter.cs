@@ -2452,8 +2452,25 @@ public class AozoraEpub3Converter
     /// <summary>縦中横変換して buf に出力。Java: convertTcyText(buf,ch,begin,end,noTcy)</summary>
     private void ConvertTcyText(StringBuilder buf, char[] ch, int begin, int end, bool noTcy)
     {
+        // ConvertRubyText のセグメント分割では noTcy 境界をまたぐ場合がある。
+        // begin 位置での正確な noTcy 状態を復元する。
+        if (_noTcyStart.Count > 0 || _noTcyEnd.Count > 0)
+        {
+            bool localNoTcy = false;
+            for (int pos = 0; pos < begin; pos++)
+            {
+                if (!localNoTcy && _noTcyStart.Contains(pos)) localNoTcy = true;
+                else if (localNoTcy && _noTcyEnd.Contains(pos)) localNoTcy = false;
+            }
+            noTcy = localNoTcy;
+        }
+
         for (int i = begin; i < end; i++)
         {
+            // セグメント内の noTcy 境界を文字単位でチェック
+            if (!noTcy && _noTcyStart.Contains(i)) noTcy = true;
+            else if (noTcy && _noTcyEnd.Contains(i)) noTcy = false;
+
             string? gaijiFileName = null;
 
             // 4バイト文字（サロゲートペア）

@@ -230,6 +230,62 @@ public class EpubIntegrationTests : IDisposable
     }
 
     [Fact]
+    public void Convert_TcyChuki_NoDoubleNesting()
+    {
+        // ［＃縦中横］を含むテキスト → 自動縦中横と二重ネストにならないことを確認
+        const string aozoraText =
+            "縦中横テスト\n著者\n\n" +
+            "驚いた［＃縦中横］!!［＃縦中横終わり］そうだ。\n" +
+            "数字12も処理される。\n";
+
+        string epubPath = ConvertToEpub(aozoraText, _tempDir, "tcy_test");
+        var entries = ReadEpubEntries(epubPath);
+
+        var xhtmlEntries = entries
+            .Where(kv => kv.Key.StartsWith("OPS/xhtml/") && kv.Key.EndsWith(".xhtml") && kv.Key != "OPS/xhtml/nav.xhtml")
+            .Select(kv => Encoding.UTF8.GetString(kv.Value))
+            .ToList();
+
+        string allContent = string.Join("\n", xhtmlEntries);
+
+        // tcy タグが存在すること
+        Assert.Contains("class=\"tcy\"", allContent);
+
+        // 二重ネスト <span class="tcy"><span><span class="tcy"> が無いこと
+        Assert.DoesNotContain("class=\"tcy\"><span><span class=\"tcy\"", allContent);
+    }
+
+    [Fact]
+    public void Convert_IntroductionChuki_NoDivInsideP()
+    {
+        // ［＃ここから前書き］はブロック要素 → <p>で囲まれないこと
+        const string aozoraText =
+            "前書きテスト\n著者\n\n" +
+            "［＃ここから前書き］\n" +
+            "これは前書きです。\n" +
+            "［＃ここで前書き終わり］\n" +
+            "本文テキスト。\n";
+
+        string epubPath = ConvertToEpub(aozoraText, _tempDir, "intro_test");
+        var entries = ReadEpubEntries(epubPath);
+
+        var xhtmlEntries = entries
+            .Where(kv => kv.Key.StartsWith("OPS/xhtml/") && kv.Key.EndsWith(".xhtml") && kv.Key != "OPS/xhtml/nav.xhtml")
+            .Select(kv => Encoding.UTF8.GetString(kv.Value))
+            .ToList();
+
+        string allContent = string.Join("\n", xhtmlEntries);
+
+        // introduction div が存在すること
+        Assert.Contains("class=\"introduction\"", allContent);
+
+        // <p><div は不正ネスト（ブロック要素が <p> 内に入ってはいけない）
+        Assert.DoesNotContain("<p><div", allContent);
+        Assert.DoesNotContain("<p id=", allContent.Split('\n')
+            .FirstOrDefault(l => l.Contains("introduction")) ?? "");
+    }
+
+    [Fact]
     public void Convert_HorizontalLayout_WritingModeHorizontal()
     {
         const string aozoraText = "横書きテスト\n著者\n\n本文。\n";

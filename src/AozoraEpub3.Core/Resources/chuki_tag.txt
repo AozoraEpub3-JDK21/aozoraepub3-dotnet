@@ -221,10 +221,10 @@
 二分アキ	<span class="half_em_space"> </span>
 
 ####前書き・後書き (narou.rb互換)
-ここから前書き	<div class="introduction">
-ここで前書き終わり	</div><div class="clear"></div>
-ここから後書き	<div class="postscript">
-ここで後書き終わり	</div><div class="clear"></div>
+ここから前書き	<div class="introduction">		1
+ここで前書き終わり	</div><div class="clear"></div>		1
+ここから後書き	<div class="postscript">		1
+ここで後書き終わり	</div><div class="clear"></div>		1
 
 ##############その他##############
 ##訂正と「ママ」 → 未対応
