@@ -1157,7 +1157,7 @@ public class WebAozoraConverter
             }
 
             // レート制限
-            try { await Task.Delay(500, ct); }
+            try { await Task.Delay(200, ct); }
             catch (OperationCanceledException) { break; }
         }
 
