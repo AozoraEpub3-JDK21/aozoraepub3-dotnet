@@ -213,8 +213,9 @@ public class AozoraEpub3Converter
                 string[] values = line.Split('\t');
                 string[] tags;
                 if (values.Length == 1) tags = new[] { "" };
-                else if (values.Length > 2 && values[2].Length > 0) tags = new[] { values[1], values[2] };
-                else tags = new[] { values[1] };
+                else if (values.Length > 2 && values[2].Length > 0)
+                    tags = new[] { ConvertJavaFormat(values[1]), ConvertJavaFormat(values[2]) };
+                else tags = new[] { ConvertJavaFormat(values[1]) };
                 _chukiMap[values[0]] = tags;
 
                 if (values.Length > 3 && values[3].Length > 0)
@@ -233,6 +234,27 @@ public class AozoraEpub3Converter
             }
             catch { LogAppender.Error(lineNum, "chuki_tag.txt", line); }
         }
+    }
+
+    /// <summary>Java String.format の %s/%% を C# string.Format の {0}/{1}/% に変換</summary>
+    private static string ConvertJavaFormat(string s)
+    {
+        if (!s.Contains('%')) return s;
+        var sb = new System.Text.StringBuilder(s.Length);
+        int argIdx = 0;
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '%' && i + 1 < s.Length)
+            {
+                if (s[i + 1] == 's') { sb.Append('{').Append(argIdx++).Append('}'); i++; }
+                else if (s[i + 1] == '%') { sb.Append('%'); i++; }
+                else sb.Append(s[i]);
+            }
+            else if (s[i] == '{') sb.Append("{{");
+            else if (s[i] == '}') sb.Append("}}");
+            else sb.Append(s[i]);
+        }
+        return sb.ToString();
     }
 
     /// <summary>chuki_tag_suf.txt を読み込んで前方参照注記テーブルを構築</summary>
