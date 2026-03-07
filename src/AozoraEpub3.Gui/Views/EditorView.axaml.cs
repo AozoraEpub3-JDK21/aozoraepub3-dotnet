@@ -51,6 +51,8 @@ public partial class EditorView : UserControl
         {
             vm.PreviewUpdateRequested += OnPreviewUpdateRequested;
             vm.SnippetInsertRequested += OnSnippetInsertRequested;
+            vm.OpenFileRequested += OnOpenFileRequested;
+            vm.SaveFileRequested += OnSaveFileRequested;
 
             vm.PropertyChanged += (_, args) =>
             {
@@ -61,6 +63,44 @@ public partial class EditorView : UserControl
                 }
             };
         }
+    }
+
+    private async Task<string?> OnOpenFileRequested()
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return null;
+
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "テキストファイルを開く",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new Avalonia.Platform.Storage.FilePickerFileType("テキストファイル") { Patterns = ["*.txt", "*.md"] },
+                new Avalonia.Platform.Storage.FilePickerFileType("すべてのファイル") { Patterns = ["*"] }
+            ]
+        });
+
+        return files.Count > 0 ? files[0].Path.LocalPath : null;
+    }
+
+    private async Task<string?> OnSaveFileRequested(string? currentPath)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return null;
+
+        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+        {
+            Title = "名前を付けて保存",
+            SuggestedFileName = currentPath != null ? Path.GetFileName(currentPath) : "novel.txt",
+            FileTypeChoices =
+            [
+                new Avalonia.Platform.Storage.FilePickerFileType("テキストファイル") { Patterns = ["*.txt"] },
+                new Avalonia.Platform.Storage.FilePickerFileType("Markdown") { Patterns = ["*.md"] }
+            ]
+        });
+
+        return file?.Path.LocalPath;
     }
 
     // ── テキスト変更 → ViewModel に反映 ────────────────────────
@@ -322,6 +362,18 @@ public partial class EditorView : UserControl
         {
             switch (e.Key)
             {
+                case Key.N:
+                    vm.NewFileCommand.Execute(null);
+                    e.Handled = true;
+                    break;
+                case Key.O:
+                    _ = vm.OpenFileCommand.ExecuteAsync(null);
+                    e.Handled = true;
+                    break;
+                case Key.S:
+                    _ = vm.SaveFileCommand.ExecuteAsync(null);
+                    e.Handled = true;
+                    break;
                 case Key.R:
                     vm.InsertSnippetCommand.Execute("ruby");
                     e.Handled = true;
@@ -344,6 +396,10 @@ public partial class EditorView : UserControl
         {
             switch (e.Key)
             {
+                case Key.S:
+                    _ = vm.SaveFileAsCommand.ExecuteAsync(null);
+                    e.Handled = true;
+                    break;
                 case Key.F:
                     vm.FormatTextCommand.Execute(null);
                     e.Handled = true;

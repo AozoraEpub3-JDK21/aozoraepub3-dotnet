@@ -8,6 +8,10 @@
 
     <!-- ToolBar -->
     <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="4" Margin="8,4">
+      <Button Content="新規" Command="{Binding NewFileCommand}" ToolTip.Tip="Ctrl+N" Padding="6,4"/>
+      <Button Content="開く" Command="{Binding OpenFileCommand}" ToolTip.Tip="Ctrl+O" Padding="6,4"/>
+      <Button Content="保存" Command="{Binding SaveFileCommand}" ToolTip.Tip="Ctrl+S" Padding="6,4"/>
+      <Separator/>
       <ComboBox ItemsSource="{Binding ModeNames}"
                 SelectedIndex="{Binding SelectedModeIndex}"
                 Width="100" VerticalAlignment="Center"/>
@@ -54,6 +58,7 @@
     <!-- StatusBar -->
     <Border Grid.Row="2" Background="#F0F0F0" Padding="8,4">
       <StackPanel Orientation="Horizontal" Spacing="16">
+        <TextBlock Text="{Binding WindowTitle}" FontWeight="SemiBold"/>
         <TextBlock>
           <Run Text="文字数: "/><Run Text="{Binding CharacterCount}"/>
         </TextBlock>

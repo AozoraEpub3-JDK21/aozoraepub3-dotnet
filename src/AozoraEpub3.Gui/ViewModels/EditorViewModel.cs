@@ -145,6 +145,92 @@ public sealed partial class EditorViewModel : ViewModelBase
         OnEditorTextChanged(EditorText);
     }
 
+    // ───── ファイル操作 ──────────────────────────────────────────────────────
+
+    /// <summary>ファイルを開くダイアログ要求。View がハンドルする。</summary>
+    public event Func<Task<string?>>? OpenFileRequested;
+
+    /// <summary>名前を付けて保存ダイアログ要求。View がハンドルする。</summary>
+    public event Func<string?, Task<string?>>? SaveFileRequested;
+
+    [RelayCommand]
+    private void NewFile()
+    {
+        if (IsDirty)
+        {
+            // TODO: 未保存確認ダイアログ
+        }
+        EditorText = "";
+        CurrentFilePath = null;
+        IsDirty = false;
+    }
+
+    [RelayCommand]
+    private async Task OpenFile()
+    {
+        if (OpenFileRequested == null) return;
+        var path = await OpenFileRequested.Invoke();
+        if (path == null) return;
+
+        try
+        {
+            EditorText = File.ReadAllText(path);
+            CurrentFilePath = path;
+            IsDirty = false;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Open file error: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveFile()
+    {
+        if (CurrentFilePath != null)
+        {
+            File.WriteAllText(CurrentFilePath, EditorText);
+            IsDirty = false;
+        }
+        else
+        {
+            await SaveFileAs();
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveFileAs()
+    {
+        if (SaveFileRequested == null) return;
+        var path = await SaveFileRequested.Invoke(CurrentFilePath);
+        if (path == null) return;
+
+        try
+        {
+            File.WriteAllText(path, EditorText);
+            CurrentFilePath = path;
+            IsDirty = false;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Save file error: {ex.Message}");
+        }
+    }
+
+    /// <summary>タイトルバー表示用のファイル名</summary>
+    public string WindowTitle
+    {
+        get
+        {
+            var name = CurrentFilePath != null ? Path.GetFileName(CurrentFilePath) : "新規";
+            var dirty = IsDirty ? " *" : "";
+            return $"{name}{dirty}";
+        }
+    }
+
+    partial void OnCurrentFilePathChanged(string? value) => OnPropertyChanged(nameof(WindowTitle));
+    partial void OnIsDirtyChanged(bool value) => OnPropertyChanged(nameof(WindowTitle));
+
     private ConversionProfile GetCurrentProfile() => SelectedModeIndex switch
     {
         1 => ConversionProfile.Narou,

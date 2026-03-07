@@ -934,5 +934,12 @@ textEditor.TextArea.TextEntering += (s, e) =>
 - 注記補完ポップアップ: ［＃ トリガーで候補表示、↑↓選択、Enter/Tab確定
 - ショートカットキー: Ctrl+R/E/B/H, Ctrl+Shift+F/P, F5
 - EditorSuggestService に ShouldShowSuggest / GetSuggestions 追加
-### Phase E5: ファイル操作 + UX 改善 — 未着手
+### Phase E5: ファイル操作 + UX 改善 — **実装完了**
+
+- ファイル操作: 新規作成(Ctrl+N) / 開く(Ctrl+O) / 保存(Ctrl+S) / 名前を付けて保存(Ctrl+Shift+S)
+- Avalonia StorageProvider API でファイルダイアログ表示
+- ステータスバー: ファイル名 + 未保存マーカー(*) 表示
+- 文字数カウント: リアルタイム表示（E3で実装済み）
+- 検索/置換: AvaloniaEdit 標準機能で提供
+- Undo/Redo: AvaloniaEdit 標準機能で提供
 ### Phase E6: 高度な機能 — 未着手
