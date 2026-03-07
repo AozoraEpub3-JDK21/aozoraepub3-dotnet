@@ -36,6 +36,10 @@ public class AozoraTextFinalizer
         if (_settings.EnableAuthorComments)
             DetectAndMarkAuthorComments(lines);
 
+        // 改ページ直後の見出し化（漢数字変換より前に実行し、見出し行を保護する）
+        if (_settings.EnableEnchantMidashi)
+            EnchantMidashi(lines);
+
         if (_settings.EnableConvertNumToKanji)
             ConvertNumToKanji(lines);
         else
@@ -48,9 +52,6 @@ public class AozoraTextFinalizer
 
         if (_settings.EnableHalfIndentBracket)
             HalfIndentBracket(lines);
-
-        if (_settings.EnableEnchantMidashi)
-            EnchantMidashi(lines);
 
         if (_settings.EnableAutoJoinInBrackets)
             AutoJoinInBrackets(lines);

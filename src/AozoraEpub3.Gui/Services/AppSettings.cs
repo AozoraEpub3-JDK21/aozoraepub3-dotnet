@@ -79,7 +79,7 @@ public sealed class GuiSettings
 
     // ──── 最後に使用した設定 ────
     public string LastOutputDirectory { get; set; } = "";
-    public int DownloadIntervalMs { get; set; } = 1500;
+    public int DownloadIntervalMs { get; set; } = 700;
     public string AppLanguage { get; set; } = "ja";
     public string AppTheme { get; set; } = "default";
     public string EpubcheckJarPath { get; set; } = "";

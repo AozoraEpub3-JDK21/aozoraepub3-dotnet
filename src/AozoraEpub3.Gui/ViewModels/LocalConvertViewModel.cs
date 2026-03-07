@@ -64,7 +64,7 @@ public sealed partial class LocalConvertViewModel : ViewModelBase
     private bool _isDrawerOpen = false;
 
     /// <summary>ドロワーの幅（アニメーション用）</summary>
-    public double DrawerWidth => IsDrawerOpen ? 520 : 0;
+    public double DrawerWidth => IsDrawerOpen ? 580 : 0;
 
     [RelayCommand]
     private void OpenDrawer() => IsDrawerOpen = true;

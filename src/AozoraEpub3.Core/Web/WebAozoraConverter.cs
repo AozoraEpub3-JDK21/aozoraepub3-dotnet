@@ -50,7 +50,7 @@ public class WebAozoraConverter
     private readonly NarouFormatSettings _settings;
     private string _baseUri = "";
     private string _pageBaseUri = "";
-    private int _interval = 1500;
+    private int _interval = 700;
     private string? _dstPath;
 
     /// <summary>ダウンロード待ち画像リスト (srcUrl, localRelPath)</summary>
@@ -82,7 +82,7 @@ public class WebAozoraConverter
         string urlString,
         string configPath,
         NarouFormatSettings settings,
-        int interval = 1500,
+        int interval = 700,
         string? dstPath = null,
         CancellationToken ct = default)
     {
@@ -105,7 +105,7 @@ public class WebAozoraConverter
         var replaceMap = LoadReplaceMap(fqdn, configPath);
         var converter = new WebAozoraConverter(queryMap, replaceMap, settings)
         {
-            _interval = Math.Max(1000, interval),
+            _interval = Math.Max(500, interval),
             _baseUri = baseUri,
             _dstPath = dstPath
         };
@@ -121,7 +121,7 @@ public class WebAozoraConverter
         string urlString,
         string configPath,
         NarouFormatSettings settings,
-        int interval = 1500,
+        int interval = 700,
         string? dstPath = null,
         CancellationToken ct = default)
     {
@@ -143,7 +143,7 @@ public class WebAozoraConverter
         var replaceMap = LoadReplaceMap(fqdn, configPath);
         var converter = new WebAozoraConverter(queryMap, replaceMap, settings)
         {
-            _interval = Math.Max(1000, interval),
+            _interval = Math.Max(500, interval),
             _baseUri = baseUri,
             _dstPath = dstPath
         };
@@ -292,7 +292,7 @@ public class WebAozoraConverter
                                 LogAppender.Append($"  目次ページ {pageIdx}/{tocTotalPages}");
                                 try
                                 {
-                                    await Task.Delay(Math.Max(1000, _interval), ct);
+                                    await Task.Delay(Math.Max(500, _interval), ct);
                                     string tocPageHtml = await DownloadHtmlAsync(nextTocUrl, null, ct);
                                     LogAppender.Println(" : Loaded.");
                                     var tocPageDoc = await ParseAsync(tocPageHtml);

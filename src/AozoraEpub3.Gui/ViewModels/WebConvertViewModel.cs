@@ -26,7 +26,7 @@ public sealed partial class WebConvertViewModel : ViewModelBase
     private string _url = "";
 
     /// <summary>ダウンロード間隔 (ms) — 最小 500ms をUIで強制</summary>
-    [ObservableProperty] private int _downloadIntervalMs = 1500;
+    [ObservableProperty] private int _downloadIntervalMs = 700;
 
     /// <summary>web設定ディレクトリ</summary>
     [ObservableProperty] private string _webConfigDirectory = "";
@@ -40,6 +40,20 @@ public sealed partial class WebConvertViewModel : ViewModelBase
     // ───── Web テキスト処理設定 ───────────────────────────────────────────────
 
     public NarouFormatSettings NarouSettings { get; } = new();
+
+    // ───── ドロワー ───────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DrawerWidth))]
+    private bool _isDrawerOpen = false;
+
+    public double DrawerWidth => IsDrawerOpen ? 580 : 0;
+
+    [RelayCommand]
+    private void OpenDrawer() => IsDrawerOpen = true;
+
+    [RelayCommand]
+    private void CloseDrawer() => IsDrawerOpen = false;
 
     // ───── 変換状態 ───────────────────────────────────────────────────────────
 

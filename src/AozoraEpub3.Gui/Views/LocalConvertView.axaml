@@ -367,8 +367,8 @@
         </Transitions>
       </Border.Transitions>
 
-      <!-- ドロワー内コンテンツ: 固定幅 520px -->
-      <Grid Width="520" RowDefinitions="Auto,*">
+      <!-- ドロワー内コンテンツ: 固定幅 580px -->
+      <Grid Width="580" RowDefinitions="Auto,*">
 
         <!-- ── ドロワーヘッダー ── -->
         <Grid Grid.Row="0"
@@ -389,6 +389,12 @@
         <TabControl Grid.Row="1"
                     TabStripPlacement="Top"
                     Padding="0">
+          <TabControl.Styles>
+            <Style Selector="TabItem">
+              <Setter Property="FontSize" Value="13" />
+              <Setter Property="Padding" Value="12,6" />
+            </Style>
+          </TabControl.Styles>
 
           <!-- ════ タブ1: 基本設定 ════ -->
           <TabItem Header="{DynamicResource Str_Tab_Basic}">
@@ -595,7 +601,7 @@
                   <NumericUpDown Grid.Column="1"
                                  Value="{Binding MaxEmptyLine}"
                                  Minimum="0" Maximum="99"
-                                 Width="100" />
+                                 Width="120" />
                 </Grid>
 
                 <!-- コメント出力 / 変換 -->
@@ -621,7 +627,7 @@
                   <NumericUpDown Grid.Column="1"
                                  Value="{Binding ChapterNameMaxLength}"
                                  Minimum="1" Maximum="256"
-                                 Width="100" />
+                                 Width="120" />
                 </Grid>
 
                 <CheckBox Content="{DynamicResource Str_Setting_ChapterExclude}"
@@ -698,7 +704,7 @@
                       <NumericUpDown Grid.Column="1"
                                      Value="{Binding PageBreakEmptyLine}"
                                      Minimum="0" Maximum="99"
-                                     Width="100" />
+                                     Width="120" />
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto" Margin="0,2">
                       <TextBlock Text="{DynamicResource Str_Setting_PageBreakEmptySize}"

@@ -4,7 +4,10 @@
              x:Class="AozoraEpub3.Gui.Views.WebConvertView"
              x:DataType="vm:WebConvertViewModel">
 
-  <Grid RowDefinitions="Auto,*,Auto,Auto,Auto" Margin="20,16">
+  <Grid ClipToBounds="True">
+
+  <!-- メインエリア -->
+  <Grid RowDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="20,16">
 
     <!-- ── URL 入力エリア ── -->
     <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,16">
@@ -64,8 +67,16 @@
       </StackPanel>
     </Border>
 
-    <!-- ── 変換実行ボタン ── -->
+    <!-- ── 詳細設定ボタン ── -->
     <Button Grid.Row="2"
+            Content="{DynamicResource Str_Action_AdvancedSettings}"
+            Command="{Binding OpenDrawerCommand}"
+            HorizontalAlignment="Right"
+            Margin="0,0,0,8"
+            Padding="12,8" />
+
+    <!-- ── 変換実行ボタン ── -->
+    <Button Grid.Row="3"
             Content="{DynamicResource Str_Web_Convert}"
             Command="{Binding ConvertCommand}"
             HorizontalAlignment="Stretch"
@@ -75,7 +86,7 @@
             Margin="0,0,0,8" />
 
     <!-- ── ステータスバー ── -->
-    <Border Grid.Row="3"
+    <Border Grid.Row="4"
             Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
             BorderThickness="1" CornerRadius="8"
@@ -112,7 +123,7 @@
     </Border>
 
     <!-- ── ログエリア ── -->
-    <Border Grid.Row="4"
+    <Border Grid.Row="5"
             IsVisible="{Binding IsLogVisible}"
             Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
@@ -141,6 +152,214 @@
         </ListBox>
       </Grid>
     </Border>
+
+  </Grid>
+  <!-- メインエリア終わり -->
+
+  <!-- ════════════ 詳細設定ドロワー ════════════ -->
+  <Border x:Name="DrawerPanel"
+          HorizontalAlignment="Right"
+          VerticalAlignment="Stretch"
+          Width="{Binding DrawerWidth}"
+          ZIndex="100"
+          ClipToBounds="True"
+          BoxShadow="-4 0 16 0 #40000000"
+          Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+          BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+          BorderThickness="1,0,0,0">
+    <Border.Transitions>
+      <Transitions>
+        <DoubleTransition Property="Width" Duration="0:0:0.28" Easing="CubicEaseInOut" />
+      </Transitions>
+    </Border.Transitions>
+
+    <Grid Width="580" RowDefinitions="Auto,*">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Height="48" Margin="16,0">
+        <TextBlock Grid.Column="0"
+                   Text="{DynamicResource Str_Drawer_Title}"
+                   FontSize="15" FontWeight="SemiBold"
+                   VerticalAlignment="Center" />
+        <Button Grid.Column="1"
+                Content="{DynamicResource Str_Action_CloseDrawer}"
+                Command="{Binding CloseDrawerCommand}"
+                Padding="10,4" />
+      </Grid>
+
+      <TabControl Grid.Row="1" TabStripPlacement="Top" Padding="0">
+        <TabControl.Styles>
+          <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="12,6" />
+          </Style>
+        </TabControl.Styles>
+
+        <!-- ════ 基本設定 ════ -->
+        <TabItem Header="{DynamicResource Str_Tab_Basic}">
+          <ScrollViewer Padding="16,8"
+                        VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="4" Margin="0,0,0,16" DataContext="{Binding Settings}">
+              <TextBlock Text="{DynamicResource Str_Group_Output}"
+                         FontWeight="SemiBold" FontSize="13" Margin="0,8,0,4" />
+              <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                <TextBlock Text="{DynamicResource Str_Setting_OutputExtension}"
+                           VerticalAlignment="Center" FontSize="13" />
+                <ComboBox Grid.Column="1" SelectedIndex="{Binding OutputExtensionIndex}" MinWidth="140">
+                  <ComboBoxItem Content=".epub" />
+                  <ComboBoxItem Content=".kepub.epub" />
+                </ComboBox>
+              </Grid>
+
+              <TextBlock Text="{DynamicResource Str_Group_Bibliography}"
+                         FontWeight="SemiBold" FontSize="13" Margin="0,12,0,4" />
+              <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                <TextBlock Text="{DynamicResource Str_Setting_TitleType}"
+                           VerticalAlignment="Center" FontSize="13" />
+                <ComboBox Grid.Column="1" SelectedIndex="{Binding TitleType}" MinWidth="200">
+                  <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_0}" />
+                  <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_1}" />
+                  <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_2}" />
+                  <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_3}" />
+                  <ComboBoxItem Content="{DynamicResource Str_Setting_TitleType_4}" />
+                </ComboBox>
+              </Grid>
+
+              <TextBlock Text="{DynamicResource Str_Group_Layout}"
+                         FontWeight="SemiBold" FontSize="13" Margin="0,12,0,4" />
+              <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,2">
+                <RadioButton Content="{DynamicResource Str_Setting_Vertical}"
+                             IsChecked="{Binding Vertical}" />
+                <RadioButton Content="{DynamicResource Str_Setting_Horizontal}"
+                             IsChecked="{Binding !Vertical}" />
+              </StackPanel>
+
+              <CheckBox Content="{DynamicResource Str_Setting_InsertTocPage}"
+                        IsChecked="{Binding InsertTocPage}" Margin="0,2" />
+              <CheckBox Content="{DynamicResource Str_Setting_InsertTitleToc}"
+                        IsChecked="{Binding InsertTitleToc}" Margin="0,2" />
+              <CheckBox Content="{DynamicResource Str_Setting_TitlePageWrite}"
+                        IsChecked="{Binding TitlePageWrite}" Margin="0,2" />
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- ════ 文字・変換 ════ -->
+        <TabItem Header="{DynamicResource Str_Tab_CharConvert}">
+          <ScrollViewer Padding="16,8"
+                        VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="4" Margin="0,0,0,16" DataContext="{Binding Settings}">
+              <CheckBox Content="{DynamicResource Str_Setting_NoIllust}"
+                        IsChecked="{Binding NoIllust}" Margin="0,2" />
+              <CheckBox Content="{DynamicResource Str_Setting_AutoYoko}"
+                        IsChecked="{Binding AutoYoko}" Margin="0,8,0,2" />
+              <StackPanel IsEnabled="{Binding AutoYoko}" Margin="16,0,0,0" Spacing="2">
+                <CheckBox Content="{DynamicResource Str_Setting_AutoYokoNum1}"
+                          IsChecked="{Binding AutoYokoNum1}" />
+                <CheckBox Content="{DynamicResource Str_Setting_AutoYokoNum3}"
+                          IsChecked="{Binding AutoYokoNum3}" />
+                <CheckBox Content="{DynamicResource Str_Setting_AutoYokoEQ1}"
+                          IsChecked="{Binding AutoYokoEQ1}" />
+              </StackPanel>
+              <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,2">
+                <TextBlock Text="{DynamicResource Str_Setting_DakutenType}"
+                           VerticalAlignment="Center" FontSize="13" />
+                <ComboBox Grid.Column="1" SelectedIndex="{Binding DakutenType}" MinWidth="160">
+                  <ComboBoxItem Content="0: なし" />
+                  <ComboBoxItem Content="1: CSSスタイル" />
+                  <ComboBoxItem Content="2: 外字フォント" />
+                </ComboBox>
+              </Grid>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- ════ 章認識 ════ -->
+        <TabItem Header="{DynamicResource Str_Tab_Chapter}">
+          <ScrollViewer Padding="16,8"
+                        VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="4" Margin="0,0,0,16" DataContext="{Binding Settings}">
+              <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,2">
+                <TextBlock Text="{DynamicResource Str_Setting_ChapterNameLength}"
+                           VerticalAlignment="Center" FontSize="13" />
+                <NumericUpDown Grid.Column="1" Value="{Binding ChapterNameMaxLength}"
+                               Minimum="1" Maximum="256" Width="120" />
+              </Grid>
+              <CheckBox Content="{DynamicResource Str_Setting_ChapterExclude}"
+                        IsChecked="{Binding ExcludeSequentialChapter}" Margin="0,2" />
+              <CheckBox Content="{DynamicResource Str_Setting_ChapterUseNextLine}"
+                        IsChecked="{Binding UseNextLineChapterName}" Margin="0,2" />
+              <CheckBox Content="{DynamicResource Str_Setting_ChapterSection}"
+                        IsChecked="{Binding ChapterSection}" Margin="0,2" />
+              <CheckBox Content="{DynamicResource Str_Setting_ChapterH}"
+                        IsChecked="{Binding ChapterH}" Margin="0,8,0,2" />
+              <StackPanel IsEnabled="{Binding IsChapterHEnabled}" Margin="16,0,0,0" Spacing="2">
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterH1}" IsChecked="{Binding ChapterH1}" />
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterH2}" IsChecked="{Binding ChapterH2}" />
+                <CheckBox Content="{DynamicResource Str_Setting_ChapterH3}" IsChecked="{Binding ChapterH3}" />
+              </StackPanel>
+              <CheckBox Content="{DynamicResource Str_Setting_ChapterName}"
+                        IsChecked="{Binding ChapterName}" Margin="0,8,0,2" />
+              <CheckBox Content="{DynamicResource Str_Setting_ChapterNumOnly}"
+                        IsChecked="{Binding ChapterNumOnly}" Margin="0,2" />
+              <CheckBox Content="{DynamicResource Str_Setting_ChapterNumTitle}"
+                        IsChecked="{Binding ChapterNumTitle}" Margin="0,2" />
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- ════ narou.rb 設定 ════ -->
+        <TabItem Header="Web処理">
+          <ScrollViewer Padding="16,8"
+                        VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="4" Margin="0,0,0,16" DataContext="{Binding NarouSettings}">
+
+              <TextBlock Text="テキスト処理"
+                         FontWeight="SemiBold" FontSize="13" Margin="0,4,0,4" />
+              <CheckBox Content="漢数字変換"
+                        IsChecked="{Binding EnableConvertNumToKanji}" Margin="0,2" />
+              <CheckBox Content="二分アキ挿入"
+                        IsChecked="{Binding EnableHalfIndentBracket}" Margin="0,2" />
+              <CheckBox Content="自動行頭字下げ"
+                        IsChecked="{Binding EnableAutoIndent}" Margin="0,2" />
+              <CheckBox Content="空行圧縮"
+                        IsChecked="{Binding EnablePackBlankLine}" Margin="0,2" />
+              <CheckBox Content="英字全角化"
+                        IsChecked="{Binding EnableAlphabetForceZenkaku}" Margin="0,2" />
+              <CheckBox Content="記号全角化"
+                        IsChecked="{Binding EnableConvertSymbolsToZenkaku}" Margin="0,2" />
+              <CheckBox Content="改ページ直後の見出し化"
+                        IsChecked="{Binding EnableEnchantMidashi}" Margin="0,2" />
+              <CheckBox Content="かぎ括弧内の自動連結"
+                        IsChecked="{Binding EnableAutoJoinInBrackets}" Margin="0,2" />
+              <CheckBox Content="行末読点での自動連結"
+                        IsChecked="{Binding EnableAutoJoinLine}" Margin="0,2" />
+              <CheckBox Content="前書き・後書き自動検出"
+                        IsChecked="{Binding EnableAuthorComments}" Margin="0,2" />
+              <CheckBox Content="なろう独自タグ処理"
+                        IsChecked="{Binding EnableNarouTag}" Margin="0,2" />
+
+              <TextBlock Text="表示"
+                         FontWeight="SemiBold" FontSize="13" Margin="0,12,0,4" />
+              <CheckBox Content="あらすじを表紙に含める"
+                        IsChecked="{Binding IncludeStory}" Margin="0,2" />
+              <CheckBox Content="掲載URLを表紙に含める"
+                        IsChecked="{Binding IncludeTocUrl}" Margin="0,2" />
+              <CheckBox Content="更新日時を表示"
+                        IsChecked="{Binding ShowPostDate}" Margin="0,2" />
+              <CheckBox Content="初回公開日を表示"
+                        IsChecked="{Binding ShowPublishDate}" Margin="0,2" />
+              <CheckBox Content="読了表示"
+                        IsChecked="{Binding EnableDisplayEndOfBook}" Margin="0,2" />
+              <CheckBox Content="かぎ括弧開閉チェック"
+                        IsChecked="{Binding EnableInspectInvalidOpenCloseBrackets}" Margin="0,2" />
+
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+      </TabControl>
+    </Grid>
+  </Border>
+  <!-- ════════════ ドロワー終わり ════════════ -->
 
   </Grid>
 </UserControl>
