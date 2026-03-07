@@ -90,12 +90,14 @@ public sealed partial class CssEditorViewModel : ViewModelBase
     {
         if (value)
         {
-            // フォーム → テキスト: 現在のフォーム値から CSS を生成
+            // フォーム → テキスト: 元の CSS をパッチして表示（EPUB固有スタイル保持）
             CssText = BuildCssFromForm();
         }
         else
         {
             // テキスト → フォーム: テキストからフォーム値に読み込み
+            // 元の CSS も更新（パッチのベースを最新に保つ）
+            _originalCssText = CssText;
             LoadFormFromCss(CssText);
         }
     }
@@ -168,18 +170,24 @@ public sealed partial class CssEditorViewModel : ViewModelBase
         }
     }
 
+    private CssStyleParams BuildParamsFromForm() => new()
+    {
+        PageMargin = [PageMarginTop, PageMarginRight, PageMarginBottom, PageMarginLeft],
+        BodyMargin = [BodyMarginTop, BodyMarginRight, BodyMarginBottom, BodyMarginLeft],
+        FontSize = FontSize,
+        LineHeight = LineHeight,
+        IsVertical = IsVertical,
+        BoldUseGothic = BoldUseGothic,
+        GothicUseBold = GothicUseBold,
+    };
+
     private string BuildCssFromForm()
     {
-        var p = new CssStyleParams
-        {
-            PageMargin = [PageMarginTop, PageMarginRight, PageMarginBottom, PageMarginLeft],
-            BodyMargin = [BodyMarginTop, BodyMarginRight, BodyMarginBottom, BodyMarginLeft],
-            FontSize = FontSize,
-            LineHeight = LineHeight,
-            IsVertical = IsVertical,
-            BoldUseGothic = BoldUseGothic,
-            GothicUseBold = GothicUseBold,
-        };
+        var p = BuildParamsFromForm();
+        // 元の CSS がある場合はパッチ方式（EPUB 固有スタイルを保持）
+        if (!string.IsNullOrEmpty(_originalCssText))
+            return CssTemplateService.PatchCss(_originalCssText, p);
+        // 元が無い場合のみ全生成
         return CssTemplateService.GenerateCss(p);
     }
 

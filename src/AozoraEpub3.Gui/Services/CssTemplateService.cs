@@ -43,7 +43,37 @@ public sealed class CssTemplateService
         return p;
     }
 
-    /// <summary>パラメータから CSS テキストを生成する。</summary>
+    /// <summary>元の CSS テキスト内の該当プロパティだけを書き換える（パッチ方式）。</summary>
+    public static string PatchCss(string originalCss, CssStyleParams p)
+    {
+        var css = originalCss;
+
+        // @page { margin: ... }
+        css = Regex.Replace(css,
+            @"(@page\s*\{[^}]*margin\s*:\s*)[^;]+(;)",
+            $"${{1}}{p.PageMargin[0]} {p.PageMargin[1]} {p.PageMargin[2]} {p.PageMargin[3]}$2",
+            RegexOptions.Singleline);
+
+        // html { margin: ... }
+        css = Regex.Replace(css,
+            @"(html\s*\{[^}]*margin\s*:\s*)[^;]+(;)",
+            $"${{1}}{p.BodyMargin[0]} {p.BodyMargin[1]} {p.BodyMargin[2]} {p.BodyMargin[3]}$2",
+            RegexOptions.Singleline);
+
+        // font-size: NNN%
+        css = Regex.Replace(css, @"(font-size\s*:\s*)\d+(\s*%)", $"${{1}}{p.FontSize}$2");
+
+        // line-height: N.N
+        css = Regex.Replace(css, @"(line-height\s*:\s*)[\d.]+(\s*;)", $"${{1}}{p.LineHeight}$2");
+
+        // writing-mode（3箇所: 標準、-webkit-、-epub-）
+        var newMode = p.IsVertical ? "vertical-rl" : "horizontal-tb";
+        css = Regex.Replace(css, @"((?:-webkit-|-epub-)?writing-mode\s*:\s*)\S+(;)", $"${{1}}{newMode}$2");
+
+        return css;
+    }
+
+    /// <summary>パラメータから CSS テキストを生成する（新規生成用）。</summary>
     public static string GenerateCss(CssStyleParams p)
     {
         var writingMode = p.IsVertical ? "vertical-rl" : "horizontal-tb";

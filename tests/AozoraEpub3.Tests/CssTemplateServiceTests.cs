@@ -149,4 +149,60 @@ public class CssTemplateServiceTests
         Assert.Equal("1em", p.PageMargin[2]);
         Assert.Equal("2em", p.PageMargin[3]);
     }
+
+    [Fact]
+    public void PatchCss_PreservesCustomRules()
+    {
+        // EPUB 固有のカスタムスタイルが含まれる CSS
+        var original = """
+            @page { margin: 0 0 0 0; }
+            html { margin: 0 0 0 0; writing-mode: vertical-rl; }
+            body { font-size: 100%; line-height: 1.8; }
+            .introduction { font-style: italic; margin: 2em; }
+            .custom-class { color: red; }
+            """;
+
+        var newParams = new CssStyleParams
+        {
+            PageMargin = ["1em", "2em", "3em", "4em"],
+            BodyMargin = ["5px", "6px", "7px", "8px"],
+            FontSize = 120,
+            LineHeight = 2.0f,
+            IsVertical = false,
+        };
+
+        var patched = CssTemplateService.PatchCss(original, newParams);
+
+        // 値が書き換わっている
+        Assert.Contains("margin: 1em 2em 3em 4em;", patched);
+        Assert.Contains("margin: 5px 6px 7px 8px;", patched);
+        Assert.Contains("font-size: 120%", patched);
+        Assert.Contains("line-height: 2;", patched);
+        Assert.Contains("horizontal-tb", patched);
+        Assert.DoesNotContain("vertical-rl", patched);
+
+        // EPUB 固有スタイルが保持されている
+        Assert.Contains(".introduction", patched);
+        Assert.Contains(".custom-class", patched);
+        Assert.Contains("color: red", patched);
+    }
+
+    [Fact]
+    public void PatchCss_UpdatesAllWritingModeVariants()
+    {
+        var original = """
+            html {
+            writing-mode: vertical-rl;
+            -webkit-writing-mode: vertical-rl;
+            -epub-writing-mode: vertical-rl;
+            }
+            """;
+
+        var p = new CssStyleParams { IsVertical = false };
+        var patched = CssTemplateService.PatchCss(original, p);
+
+        Assert.DoesNotContain("vertical-rl", patched);
+        // 3箇所とも horizontal-tb に変わっている
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(patched, "horizontal-tb").Count);
+    }
 }
