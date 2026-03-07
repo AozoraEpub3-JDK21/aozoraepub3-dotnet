@@ -145,4 +145,13 @@
   <sys:String x:Key="Str_SettingsPage_Theme_Light">ライト</sys:String>
   <sys:String x:Key="Str_SettingsPage_Theme_Dark">ダーク</sys:String>
 
+  <!-- ===== プレビュー画面 ===== -->
+  <sys:String x:Key="Str_Nav_Preview">プレビュー</sys:String>
+  <sys:String x:Key="Str_Preview_Title">プレビュー</sys:String>
+  <sys:String x:Key="Str_Preview_OpenEpub">EPUBを開く...</sys:String>
+  <sys:String x:Key="Str_Preview_NoEpub">EPUBが読み込まれていません。&#x0a;EPUBファイルを開いてプレビューできます。</sys:String>
+  <sys:String x:Key="Str_Preview_Toc">目次</sys:String>
+  <sys:String x:Key="Str_Preview_Prev">&lt;</sys:String>
+  <sys:String x:Key="Str_Preview_Next">&gt;</sys:String>
+
 </ResourceDictionary>

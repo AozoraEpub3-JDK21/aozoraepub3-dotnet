@@ -342,12 +342,6 @@ public class WebAozoraConverter
         lines.Add($"底本：　<a href=\"{urlString}\">{urlString}</a>");
         lines.Add($"変換日時：　{DateTime.Now:yyyy/MM/dd HH:mm:ss}");
 
-        if (_settings.EnableDisplayEndOfBook)
-        {
-            lines.Add("");
-            lines.Add("［＃ここから地付き］［＃小書き］（本を読み終わりました）［＃小書き終わり］［＃ここで地付き終わり］");
-        }
-
         return lines;
     }
 

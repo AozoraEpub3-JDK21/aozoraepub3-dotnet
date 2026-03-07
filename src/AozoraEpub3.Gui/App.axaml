@@ -33,6 +33,9 @@
     <DataTemplate DataType="{x:Type vm:SettingsPageViewModel}">
       <views:SettingsPageView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:PreviewViewModel}">
+      <views:PreviewView />
+    </DataTemplate>
   </Application.DataTemplates>
 
 </Application>

@@ -285,6 +285,32 @@ public class AozoraTextFinalizer
     // B3: 漢数字変換 (narou.rb: enable_convert_num_to_kanji)
     // ═══════════════════════════════════════════════════════════════
 
+    /// <summary>URL行・変換日時行など変換不要な行を判定</summary>
+    private static bool ShouldSkipConversion(string line) =>
+        line.Contains("://") || line.StartsWith("変換日時");
+
+    /// <summary>注記 ［＃...］ の範囲を除外して変換関数を適用</summary>
+    private static readonly Regex AnnotationRegex = new(@"［＃[^］]*］", RegexOptions.Compiled);
+
+    private static string TransformOutsideAnnotations(string line, Func<string, string> transform)
+    {
+        var matches = AnnotationRegex.Matches(line);
+        if (matches.Count == 0) return transform(line);
+
+        var sb = new System.Text.StringBuilder(line.Length);
+        int pos = 0;
+        foreach (Match m in matches)
+        {
+            if (m.Index > pos)
+                sb.Append(transform(line[pos..m.Index]));
+            sb.Append(m.Value);
+            pos = m.Index + m.Length;
+        }
+        if (pos < line.Length)
+            sb.Append(transform(line[pos..]));
+        return sb.ToString();
+    }
+
     private const string KanjiNum = "〇一二三四五六七八九";
 
     /// <summary>半角・全角数字を漢数字に変換</summary>
@@ -293,18 +319,27 @@ public class AozoraTextFinalizer
         for (int i = 0; i < lines.Count; i++)
         {
             string line = lines[i];
-            if (line.StartsWith("［＃")) continue; // 注記行はスキップ
+            if (line.Length == 0) continue;
+            if (ShouldSkipConversion(line)) continue; // URL行・変換日時行スキップ
 
-            // 半角数字 → 全角数字 → 漢数字
-            line = NumToKanjiRegex.Replace(line, m =>
+            // サブタイトル行（中見出し・大見出し）は全角数字変換のみ
+            if (line.Contains("［＃中見出し］") || line.Contains("［＃大見出し］"))
             {
-                string digits = m.Value;
-                // カンマ含む数字はそのまま全角化
-                if (digits.Contains(',') || digits.Contains('，'))
-                    return HankakuToZenkaku(digits.Replace('，', ','));
-                return DigitsToKanji(NormalizeDigits(digits));
-            });
-            lines[i] = line;
+                lines[i] = TransformOutsideAnnotations(line, s =>
+                    NumToKanjiRegex.Replace(s, m => HankakuToZenkaku(m.Value)));
+                continue;
+            }
+
+            // 半角数字 → 全角数字 → 漢数字 (注記内スキップ)
+            lines[i] = TransformOutsideAnnotations(line, s =>
+                NumToKanjiRegex.Replace(s, m =>
+                {
+                    string digits = m.Value;
+                    // カンマ含む数字はそのまま全角化
+                    if (digits.Contains(',') || digits.Contains('，'))
+                        return HankakuToZenkaku(digits.Replace('，', ','));
+                    return DigitsToKanji(NormalizeDigits(digits));
+                }));
         }
     }
 
@@ -353,14 +388,16 @@ public class AozoraTextFinalizer
         for (int i = 0; i < lines.Count; i++)
         {
             string line = lines[i];
-            if (line.StartsWith("［＃")) continue;
-            line = Regex.Replace(line, @"\d+", m =>
-            {
-                if (m.Value.Length == 2)
-                    return $"［＃縦中横］{m.Value}［＃縦中横終わり］";
-                return HankakuToZenkaku(m.Value);
-            });
-            lines[i] = line;
+            if (line.Length == 0) continue;
+            if (ShouldSkipConversion(line)) continue;
+
+            lines[i] = TransformOutsideAnnotations(line, s =>
+                Regex.Replace(s, @"\d+", m =>
+                {
+                    if (m.Value.Length == 2)
+                        return $"［＃縦中横］{m.Value}［＃縦中横終わり］";
+                    return HankakuToZenkaku(m.Value);
+                }));
         }
     }
 
@@ -377,19 +414,21 @@ public class AozoraTextFinalizer
         for (int i = 0; i < lines.Count; i++)
         {
             string line = lines[i];
-            if (line.StartsWith("［＃")) continue;
-            line = EnglishWordRegex.Replace(line, m =>
-            {
-                string match = m.Value;
-                if (!ContainsAlpha(match)) return match;
-                if (force)
+            if (line.Length == 0) continue;
+            if (ShouldSkipConversion(line)) continue;
+
+            lines[i] = TransformOutsideAnnotations(line, s =>
+                EnglishWordRegex.Replace(s, m =>
+                {
+                    string match = m.Value;
+                    if (!ContainsAlpha(match)) return match;
+                    if (force)
+                        return AlphaToZenkaku(match);
+                    // 英文（2語以上）または8文字以上 → 半角のまま保護
+                    if (match.Split(' ').Length >= 2 || match.Length >= EnglishSentenceMinLength)
+                        return match;
                     return AlphaToZenkaku(match);
-                // 英文（2語以上）または8文字以上 → 半角のまま保護
-                if (match.Split(' ').Length >= 2 || match.Length >= EnglishSentenceMinLength)
-                    return match;
-                return AlphaToZenkaku(match);
-            });
-            lines[i] = line;
+                }));
         }
     }
 

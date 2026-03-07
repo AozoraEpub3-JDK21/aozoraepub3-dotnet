@@ -20,6 +20,7 @@
 
     <!-- ══════ Row 0: ヘッダー ══════ -->
     <Border Grid.Row="0"
+            IsVisible="{Binding IsHeaderVisible}"
             Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
             BorderThickness="0,0,0,1"
@@ -56,7 +57,7 @@
       PaneWidth : アイコン + テキストのラベル幅
     -->
     <SplitView Grid.Row="1"
-               IsPaneOpen="True"
+               IsPaneOpen="{Binding IsSidebarVisible}"
                DisplayMode="CompactInline"
                PanePlacement="Left"
                PaneBackground="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
@@ -89,6 +90,15 @@
           <Button Content="{DynamicResource Str_Nav_Settings}"
                   Command="{Binding NavigateToCommand}"
                   CommandParameter="settings"
+                  HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Left"
+                  Padding="16,12"
+                  Classes="nav-item" />
+
+          <!-- プレビュー -->
+          <Button Content="{DynamicResource Str_Nav_Preview}"
+                  Command="{Binding NavigateToCommand}"
+                  CommandParameter="preview"
                   HorizontalAlignment="Stretch"
                   HorizontalContentAlignment="Left"
                   Padding="16,12"

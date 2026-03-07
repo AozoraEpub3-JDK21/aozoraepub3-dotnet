@@ -145,4 +145,13 @@
   <sys:String x:Key="Str_SettingsPage_Theme_Light">Light</sys:String>
   <sys:String x:Key="Str_SettingsPage_Theme_Dark">Dark</sys:String>
 
+  <!-- ===== Preview ===== -->
+  <sys:String x:Key="Str_Nav_Preview">Preview</sys:String>
+  <sys:String x:Key="Str_Preview_Title">Preview</sys:String>
+  <sys:String x:Key="Str_Preview_OpenEpub">Open EPUB...</sys:String>
+  <sys:String x:Key="Str_Preview_NoEpub">No EPUB loaded.&#x0a;Open an EPUB file to preview.</sys:String>
+  <sys:String x:Key="Str_Preview_Toc">Table of Contents</sys:String>
+  <sys:String x:Key="Str_Preview_Prev">&lt;</sys:String>
+  <sys:String x:Key="Str_Preview_Next">&gt;</sys:String>
+
 </ResourceDictionary>

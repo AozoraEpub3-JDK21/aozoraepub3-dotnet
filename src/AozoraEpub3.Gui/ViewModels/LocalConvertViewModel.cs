@@ -28,6 +28,9 @@ public sealed partial class LocalConvertViewModel : ViewModelBase
     private readonly ConversionService _conversionService = new();
     private CancellationTokenSource? _cts;
 
+    /// <summary>変換完了後にプレビューを開くためのコールバック。MainWindowViewModel が設定する。</summary>
+    public Action<string>? OnConversionCompleted { get; set; }
+
     public LocalConvertViewModel()
     {
         InputFiles.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasFiles));
@@ -201,6 +204,21 @@ public sealed partial class LocalConvertViewModel : ViewModelBase
 
             SetStatus("変換完了");
             ProgressValue = 100;
+
+            // 最後に変換されたファイルの出力EPUBを探してプレビューを開く
+            if (OnConversionCompleted != null && LastOutputDirectory != null)
+            {
+                var lastInput = InputFiles[^1].FullPath;
+                var outDir = LastOutputDirectory;
+                var epubFiles = Directory.GetFiles(outDir, "*" + Settings.OutputExtension)
+                    .OrderByDescending(File.GetLastWriteTimeUtc)
+                    .FirstOrDefault();
+                if (epubFiles != null)
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(
+                        () => OnConversionCompleted?.Invoke(epubFiles));
+                }
+            }
         }
         catch (OperationCanceledException)
         {

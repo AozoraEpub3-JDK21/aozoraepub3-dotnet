@@ -16,6 +16,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public LocalConvertViewModel LocalConvertVm { get; } = new();
     public WebConvertViewModel WebConvertVm { get; } = new();
     public SettingsPageViewModel SettingsVm { get; } = new();
+    public PreviewViewModel PreviewVm { get; } = new();
 
     // ───── SPA ルーティング ──────────────────────────────────────────────────
 
@@ -29,17 +30,24 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         _currentPage = LocalConvertVm;
+        LocalConvertVm.OnConversionCompleted = OpenPreview;
+        PreviewVm.ToggleMaximizeRequested += () => IsPreviewMaximized = !IsPreviewMaximized;
         LoadSettings();
     }
 
     [RelayCommand]
     private void NavigateTo(string page)
     {
+        // ページ遷移時にプレビュー最大化を解除
+        if (IsPreviewMaximized)
+            IsPreviewMaximized = false;
+
         CurrentPage = page switch
         {
             "local"    => LocalConvertVm,
             "web"      => WebConvertVm,
             "settings" => SettingsVm,
+            "preview"  => PreviewVm,
             _          => LocalConvertVm
         };
     }
@@ -53,6 +61,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public bool IsJapanese => CurrentLanguage == "ja";
 
+    /// <summary>プレビュー最大化モード（ヘッダー・サイドバーを隠す）</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsHeaderVisible))]
+    [NotifyPropertyChangedFor(nameof(IsSidebarVisible))]
+    private bool _isPreviewMaximized;
+
+    public bool IsHeaderVisible => !IsPreviewMaximized;
+    public bool IsSidebarVisible => !IsPreviewMaximized;
+
     [RelayCommand]
     private void ToggleLanguage()
     {
@@ -65,6 +82,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         LocalizationService.SetLanguage(lang);
         CurrentLanguage = LocalizationService.CurrentLanguage;
+    }
+
+    // ───── プレビュー連携 ────────────────────────────────────────────────────
+
+    /// <summary>指定 EPUB をプレビュータブで開く（変換完了後の自動遷移用）。</summary>
+    public void OpenPreview(string epubPath)
+    {
+        PreviewVm.OpenEpubCommand.Execute(epubPath);
+        CurrentPage = PreviewVm;
     }
 
     // ───── 設定の永続化 ──────────────────────────────────────────────────────
