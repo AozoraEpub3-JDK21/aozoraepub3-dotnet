@@ -18,6 +18,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public SettingsPageViewModel SettingsVm { get; } = new();
     public PreviewViewModel PreviewVm { get; } = new();
     public ValidateViewModel ValidateVm { get; } = new();
+    public EditorViewModel EditorVm { get; } = new();
 
     // ───── SPA ルーティング ──────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             "settings" => SettingsVm,
             "preview"  => PreviewVm,
             "validate" => ValidateVm,
+            "editor"   => EditorVm,
             _          => LocalConvertVm
         };
     }

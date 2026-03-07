@@ -107,6 +107,15 @@
                     Padding="16,12"
                     Classes="nav-item" />
 
+            <!-- 執筆 -->
+            <Button Content="執筆"
+                    Command="{Binding NavigateToCommand}"
+                    CommandParameter="editor"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="16,12"
+                    Classes="nav-item" />
+
           </StackPanel>
 
           <!-- 下部: 設定（常に最下部） -->

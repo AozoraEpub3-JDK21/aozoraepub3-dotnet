@@ -39,6 +39,9 @@
     <DataTemplate DataType="{x:Type vm:ValidateViewModel}">
       <views:ValidateView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:EditorViewModel}">
+      <views:EditorView />
+    </DataTemplate>
   </Application.DataTemplates>
 
 </Application>

@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AozoraEpub3.Gui.ViewModels"
+             x:Class="AozoraEpub3.Gui.Views.EditorView"
+             x:DataType="vm:EditorViewModel">
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- ToolBar -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="4" Margin="8,4">
+      <ComboBox ItemsSource="{Binding ModeNames}"
+                SelectedIndex="{Binding SelectedModeIndex}"
+                Width="100" VerticalAlignment="Center"/>
+      <Separator/>
+      <Button Content="ルビ" Command="{Binding InsertSnippetCommand}" CommandParameter="ruby"
+              ToolTip.Tip="Ctrl+R" Padding="6,4"/>
+      <Button Content="傍点" Command="{Binding InsertSnippetCommand}" CommandParameter="emphasis"
+              ToolTip.Tip="Ctrl+E" Padding="6,4"/>
+      <Button Content="太字" Command="{Binding InsertSnippetCommand}" CommandParameter="bold"
+              ToolTip.Tip="Ctrl+B" Padding="6,4"/>
+      <Button Content="見出し" Command="{Binding InsertSnippetCommand}" CommandParameter="heading"
+              ToolTip.Tip="Ctrl+H" Padding="6,4"/>
+      <Button Content="改ページ" Command="{Binding InsertSnippetCommand}" CommandParameter="pagebreak"
+              Padding="6,4"/>
+      <Separator/>
+      <ToggleButton Content="縦書き" IsChecked="{Binding IsVertical}" Padding="6,4"/>
+      <Button Content="整形" Command="{Binding FormatTextCommand}"
+              ToolTip.Tip="Ctrl+Shift+F" Padding="6,4"/>
+      <Separator/>
+      <ToggleButton Content="プレビュー" IsChecked="{Binding IsPreviewVisible}"
+                    ToolTip.Tip="F5" Padding="6,4"/>
+    </StackPanel>
+
+    <!-- Editor + Preview Split -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*">
+
+      <!-- Editor TextBox -->
+      <TextBox x:Name="EditorTextBox"
+               Grid.Column="0"
+               Text="{Binding EditorText, Mode=TwoWay}"
+               AcceptsReturn="True"
+               AcceptsTab="True"
+               TextWrapping="Wrap"
+               FontFamily="BIZ UDGothic, MS Gothic, monospace"
+               FontSize="14"
+               Padding="12,8"
+               Watermark="ここにテキストを入力..."/>
+
+      <!-- Splitter -->
+      <GridSplitter Grid.Column="1" Width="4"
+                    Background="Gray" Opacity="0.3"
+                    IsVisible="{Binding IsPreviewVisible}"/>
+
+      <!-- Preview (WebView2Host wired in code-behind) -->
+      <Border Grid.Column="2"
+              IsVisible="{Binding IsPreviewVisible}"
+              BorderBrush="Gray" BorderThickness="1,0,0,0">
+        <Grid x:Name="PreviewContainer"/>
+      </Border>
+
+    </Grid>
+
+    <!-- StatusBar -->
+    <Border Grid.Row="2" Background="#F0F0F0" Padding="8,4">
+      <StackPanel Orientation="Horizontal" Spacing="16">
+        <TextBlock>
+          <Run Text="文字数: "/><Run Text="{Binding CharacterCount}"/>
+        </TextBlock>
+        <TextBlock>
+          <Run Text="行数: "/><Run Text="{Binding LineCount}"/>
+        </TextBlock>
+        <TextBlock>
+          <Run Text="Lint: "/><Run Text="{Binding LintWarningCount}"/><Run Text=" warnings"/>
+        </TextBlock>
+      </StackPanel>
+    </Border>
+
+  </Grid>
+
+</UserControl>
