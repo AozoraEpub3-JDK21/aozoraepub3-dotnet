@@ -250,6 +250,18 @@ public sealed class EditorSuggestService
         => new() { TextToInsert = ruby.TextToInsert, CursorOffset = ruby.CursorOffset };
 
     // ════════════════════════════════════════════════════════
+    // 注記補完
+    // ════════════════════════════════════════════════════════
+
+    /// <summary>カーソル前のテキストから注記補完トリガー（［＃）を検出する</summary>
+    public bool ShouldShowSuggest(string textBeforeCursor)
+        => textBeforeCursor.EndsWith("［＃");
+
+    /// <summary>前方一致で注記候補をフィルタリングする</summary>
+    public IReadOnlyList<ChukiSuggestItem> GetSuggestions(string filterText)
+        => _chukiDictionary.Search(filterText);
+
+    // ════════════════════════════════════════════════════════
     // ユーティリティ
     // ════════════════════════════════════════════════════════
 

@@ -34,17 +34,8 @@
     <!-- Editor + Preview Split -->
     <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*">
 
-      <!-- Editor TextBox -->
-      <TextBox x:Name="EditorTextBox"
-               Grid.Column="0"
-               Text="{Binding EditorText, Mode=TwoWay}"
-               AcceptsReturn="True"
-               AcceptsTab="True"
-               TextWrapping="Wrap"
-               FontFamily="BIZ UDGothic, MS Gothic, monospace"
-               FontSize="14"
-               Padding="12,8"
-               Watermark="ここにテキストを入力..."/>
+      <!-- TextEditor (created in code-behind) -->
+      <Grid x:Name="EditorContainer" Grid.Column="0"/>
 
       <!-- Splitter -->
       <GridSplitter Grid.Column="1" Width="4"

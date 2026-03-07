@@ -927,6 +927,12 @@ textEditor.TextArea.TextEntering += (s, e) =>
 - EditorView: TextBox + WebView2Host 分割表示、ショートカットキー
 - MainWindow 統合: サイドバー「執筆」ボタン追加
 
-### Phase E4: エディタ UI — 未着手
+### Phase E4: エディタ UI — **実装完了**
+
+- AvaloniaEdit (TextEditor) 導入: 行番号表示、WordWrap、コードエディタ品質
+- 括弧ペアリング統合: TextEntering イベントで IME 安全な処理
+- 注記補完ポップアップ: ［＃ トリガーで候補表示、↑↓選択、Enter/Tab確定
+- ショートカットキー: Ctrl+R/E/B/H, Ctrl+Shift+F/P, F5
+- EditorSuggestService に ShouldShowSuggest / GetSuggestions 追加
 ### Phase E5: ファイル操作 + UX 改善 — 未着手
 ### Phase E6: 高度な機能 — 未着手
