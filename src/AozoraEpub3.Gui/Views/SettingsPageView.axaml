@@ -33,5 +33,50 @@
       </ComboBox>
     </StackPanel>
 
+    <!-- エディタテーマ -->
+    <StackPanel Spacing="8">
+      <TextBlock Text="エディタテーマ"
+                 FontWeight="SemiBold" FontSize="14" />
+      <ComboBox ItemsSource="{Binding EditorThemeNames}"
+                SelectedIndex="{Binding EditorThemeIndex}"
+                MinWidth="200" />
+    </StackPanel>
+
+    <!-- エディタフォント -->
+    <StackPanel Spacing="8">
+      <TextBlock Text="エディタフォント"
+                 FontWeight="SemiBold" FontSize="14" />
+      <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+        <TextBox Grid.Row="0" Grid.Column="0"
+                 Text="{Binding EditorFontFamily}"
+                 Watermark="フォント名（空=テーマデフォルト）"
+                 MinWidth="200" />
+        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8,0,0,0">
+          <TextBlock Text="サイズ:" VerticalAlignment="Center" />
+          <NumericUpDown Value="{Binding EditorFontSize}"
+                        Minimum="10" Maximum="24" Increment="1"
+                        Width="90" FormatString="0" />
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+
+    <!-- プレビューフォント -->
+    <StackPanel Spacing="8">
+      <TextBlock Text="プレビューフォント"
+                 FontWeight="SemiBold" FontSize="14" />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox Grid.Column="0"
+                 Text="{Binding PreviewFontFamily}"
+                 Watermark="フォント名（空=テーマデフォルト）"
+                 MinWidth="200" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8,0,0,0">
+          <TextBlock Text="サイズ:" VerticalAlignment="Center" />
+          <NumericUpDown Value="{Binding PreviewFontSize}"
+                        Minimum="12" Maximum="32" Increment="1"
+                        Width="90" FormatString="0" />
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+
   </StackPanel>
 </UserControl>

@@ -310,14 +310,24 @@
                 Padding="10,4"
                 FontSize="14" />
 
-        <!-- ステータスメッセージ -->
-        <TextBlock Grid.Column="3"
-                   Text="{Binding StatusMessage}"
-                   FontSize="12"
-                   Opacity="0.6"
-                   VerticalAlignment="Center"
-                   Margin="16,0"
-                   TextTrimming="CharacterEllipsis" />
+        <!-- ステータスメッセージ + 層1→層2 導線 -->
+        <StackPanel Grid.Column="3"
+                    Orientation="Horizontal"
+                    VerticalAlignment="Center"
+                    Margin="16,0">
+          <TextBlock Text="{Binding StatusMessage}"
+                     FontSize="12"
+                     Opacity="0.6"
+                     TextTrimming="CharacterEllipsis" />
+          <Button Content="自分でも書いてみる →"
+                  Command="{Binding NavigateToCardsCommand}"
+                  IsVisible="{Binding IsEpubLoaded}"
+                  FontSize="11" Opacity="0.7"
+                  Background="Transparent" BorderThickness="0"
+                  Foreground="{DynamicResource SystemAccentColor}"
+                  Padding="12,2" Margin="16,0,0,0"
+                  Cursor="Hand"/>
+        </StackPanel>
 
         <!-- フォント選択 + Open EPUB -->
         <StackPanel Grid.Column="4"

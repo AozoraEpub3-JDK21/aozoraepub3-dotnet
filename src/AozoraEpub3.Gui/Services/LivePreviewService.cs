@@ -4,6 +4,7 @@ using AozoraEpub3.Core.Converter;
 using AozoraEpub3.Core.Editor;
 using AozoraEpub3.Core.Info;
 using AozoraEpub3.Core.Io;
+using System.Text;
 
 namespace AozoraEpub3.Gui.Services;
 
@@ -17,6 +18,9 @@ public sealed class LivePreviewService
     private BookInfo? _cachedBookInfo;
     private readonly EditorConversionEngine _engine;
 
+    /// <summary>プレビュー表示に使うテーマ。null の場合はデフォルト色を使用。</summary>
+    public EditorTheme? Theme { get; set; }
+
     public LivePreviewService(ConversionProfile profile)
     {
         _engine = new EditorConversionEngine(profile);
@@ -28,10 +32,10 @@ public sealed class LivePreviewService
     public string ConvertToXhtml(string editorText, bool vertical = true)
     {
         if (string.IsNullOrWhiteSpace(editorText))
-            return BuildXhtml("", vertical);
+            return BuildXhtml("", vertical, Theme);
         var aozoraText = _engine.FormatAndConvert(editorText);
         var bodyHtml = ConvertAozoraToXhtmlBody(aozoraText);
-        return BuildXhtml(bodyHtml, vertical);
+        return BuildXhtml(bodyHtml, vertical, Theme);
     }
 
     /// <summary>Lint 警告のみ取得する。</summary>
@@ -68,9 +72,13 @@ public sealed class LivePreviewService
         return body;
     }
 
-    private static string BuildXhtml(string bodyContent, bool vertical)
+    private static string BuildXhtml(string bodyContent, bool vertical, EditorTheme? theme)
     {
         var writingMode = vertical ? "vertical-rl" : "horizontal-tb";
+        var bgColor = theme?.PreviewBackground ?? "#ffffff";
+        var fgColor = theme?.PreviewForeground ?? "#1a1a1a";
+        var fontFamily = theme?.PreviewFontFamily ?? "游明朝, Yu Mincho, serif";
+        var fontSize = theme?.PreviewFontSize ?? 16;
         return $$"""
             <!DOCTYPE html>
             <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja" lang="ja">
@@ -82,16 +90,16 @@ public sealed class LivePreviewService
             html {
                 writing-mode: {{writingMode}};
                 -webkit-writing-mode: {{writingMode}};
-                background-color: #ffffff;
+                background-color: {{bgColor}};
             }
             body {
-                font-family: "ＭＳ 明朝", "Yu Mincho", serif;
-                font-size: 16px;
+                font-family: "{{fontFamily}}";
+                font-size: {{fontSize}}px;
                 line-height: 1.8;
                 margin: 0;
                 padding: 2em 3em;
-                background-color: #ffffff;
-                color: #1a1a1a;
+                background-color: {{bgColor}};
+                color: {{fgColor}};
             }
             p { text-indent: 1em; margin: 0; }
             .bold { font-weight: bold; }

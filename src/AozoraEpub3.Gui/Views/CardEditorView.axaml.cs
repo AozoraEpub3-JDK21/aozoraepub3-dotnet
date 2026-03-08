@@ -7,31 +7,106 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using AozoraEpub3.Core.Editor;
 using AozoraEpub3.Gui.Controls;
-using AozoraEpub3.Gui.Services;
 using AozoraEpub3.Gui.ViewModels;
 
 namespace AozoraEpub3.Gui.Views;
 
-public partial class EditorView : UserControl
+public partial class CardEditorView : UserControl
 {
     private WebView2Host? _webView;
-    private readonly EditorSuggestService _suggestService = new();
-    private ListBox? _suggestList;
-    private Popup? _suggestPopup;
-    private string _suggestFilter = "";
-    private bool _isSuggestActive;
     private ScrollViewer? _textBoxScrollViewer;
+    private Point _dragStartPoint;
+    private bool _isDragging;
 
-    public EditorView()
+    public CardEditorView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
 
         EditorTextBox.PropertyChanged += OnEditorTextBoxPropertyChanged;
         EditorTextBox.TextChanged += OnEditorTextBoxTextChanged;
-
-        // スクロール同期のため ScrollViewer を取得
         EditorTextBox.TemplateApplied += OnTextBoxTemplateApplied;
+
+        // ドラッグ＆ドロップ
+        TreeListBox.AddHandler(DragDrop.DropEvent, OnTreeDrop);
+        TreeListBox.AddHandler(DragDrop.DragOverEvent, OnTreeDragOver);
+        TreeListBox.AddHandler(InputElement.PointerPressedEvent, OnTreePointerPressed, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        TreeListBox.AddHandler(InputElement.PointerMovedEvent, OnTreePointerMoved, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        TreeListBox.AddHandler(InputElement.PointerReleasedEvent, OnTreePointerReleased, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+    }
+
+    // ── ドラッグ＆ドロップ ─────────────────────────────────────────
+
+    private void OnTreePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(TreeListBox).Properties.IsLeftButtonPressed)
+        {
+            _dragStartPoint = e.GetPosition(TreeListBox);
+            _isDragging = false;
+        }
+    }
+
+    private async void OnTreePointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!e.GetCurrentPoint(TreeListBox).Properties.IsLeftButtonPressed) return;
+        if (_isDragging) return;
+
+        var pos = e.GetPosition(TreeListBox);
+        var diff = pos - _dragStartPoint;
+        if (Math.Abs(diff.Y) < 10) return;
+
+        if (DataContext is not CardEditorViewModel vm || vm.SelectedTreeItem == null) return;
+
+        _isDragging = true;
+        var data = new DataObject();
+        data.Set("TreeIndex", vm.TreeItems.IndexOf(vm.SelectedTreeItem));
+        await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+        _isDragging = false;
+    }
+
+    private void OnTreePointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _isDragging = false;
+    }
+
+    private void OnTreeDragOver(object? sender, DragEventArgs e)
+    {
+#pragma warning disable CS0618
+        e.DragEffects = e.Data.Contains("TreeIndex") ? DragDropEffects.Move : DragDropEffects.None;
+#pragma warning restore CS0618
+        e.Handled = true;
+    }
+
+    private void OnTreeDrop(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not CardEditorViewModel vm) return;
+#pragma warning disable CS0618
+        if (!e.Data.Contains("TreeIndex")) return;
+        var sourceIndex = (int)e.Data.Get("TreeIndex")!;
+#pragma warning restore CS0618
+
+        var pos = e.GetPosition(TreeListBox);
+        var targetIndex = GetDropTargetIndex(pos, vm);
+        if (targetIndex < 0) targetIndex = vm.TreeItems.Count - 1;
+
+        vm.MoveItem(sourceIndex, targetIndex);
+        e.Handled = true;
+    }
+
+    private int GetDropTargetIndex(Point position, CardEditorViewModel vm)
+    {
+        for (int i = 0; i < TreeListBox.ItemCount; i++)
+        {
+            var container = TreeListBox.ContainerFromIndex(i);
+            if (container is not Control ctrl) continue;
+
+            var itemPos = ctrl.TranslatePoint(new Point(0, 0), TreeListBox);
+            if (itemPos == null) continue;
+
+            var midY = itemPos.Value.Y + ctrl.Bounds.Height / 2;
+            if (position.Y < midY) return i;
+        }
+        return vm.TreeItems.Count - 1;
     }
 
     // ── 行番号同期 ──────────────────────────────────────────────
@@ -47,9 +122,7 @@ public partial class EditorView : UserControl
     }
 
     private void OnTextBoxScrollChanged(object? sender, ScrollChangedEventArgs e)
-    {
-        UpdateLineNumberScroll();
-    }
+        => UpdateLineNumberScroll();
 
     private void UpdateLineNumberScroll()
     {
@@ -60,42 +133,74 @@ public partial class EditorView : UserControl
 
     private void OnEditorTextBoxPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if (e.Property.Name == "Text")
-            UpdateLineNumbers();
+        if (e.Property.Name == "Text") UpdateLineNumbers();
     }
 
     private void OnEditorTextBoxTextChanged(object? sender, TextChangedEventArgs e)
-    {
-        UpdateLineNumbers();
-    }
+        => UpdateLineNumbers();
 
     private void UpdateLineNumbers()
     {
         var text = EditorTextBox.Text ?? "";
         var lineCount = text.Length == 0 ? 1 : text.Split('\n').Length;
-        var numbers = string.Join('\n', Enumerable.Range(1, lineCount));
-        LineNumberBlock.Text = numbers;
+        LineNumberBlock.Text = string.Join('\n', Enumerable.Range(1, lineCount));
     }
 
     // ── ViewModel 接続 ───────────────────────────────────────────
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
-        if (DataContext is EditorViewModel vm)
+        if (DataContext is CardEditorViewModel vm)
         {
             vm.PreviewUpdateRequested += OnPreviewUpdateRequested;
             vm.SnippetInsertRequested += OnSnippetInsertRequested;
-            vm.OpenFileRequested += OnOpenFileRequested;
-            vm.SaveFileRequested += OnSaveFileRequested;
             vm.ThemeChanged += OnThemeChanged;
+            vm.OpenProjectRequested += OnOpenProjectRequested;
+            vm.SaveProjectAsRequested += OnSaveProjectAsRequested;
             ApplyTheme(vm.CurrentTheme);
+
+            vm.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(CardEditorViewModel.SelectedTreeItem))
+                    Dispatcher.UIThread.Post(() => EditorTextBox.Focus(), DispatcherPriority.Loaded);
+            };
         }
     }
 
-    private void OnThemeChanged(EditorTheme theme)
+    private async Task<string?> OnOpenProjectRequested()
     {
-        Dispatcher.UIThread.Post(() => ApplyTheme(theme));
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return null;
+
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(
+            new Avalonia.Platform.Storage.FolderPickerOpenOptions
+            {
+                Title = "プロジェクトフォルダを開く",
+                AllowMultiple = false
+            });
+
+        return folders.Count > 0 ? folders[0].Path.LocalPath : null;
     }
+
+    private async Task<string?> OnSaveProjectAsRequested(string? currentPath)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return null;
+
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(
+            new Avalonia.Platform.Storage.FolderPickerOpenOptions
+            {
+                Title = "プロジェクトの保存先フォルダを選択",
+                AllowMultiple = false
+            });
+
+        return folders.Count > 0 ? folders[0].Path.LocalPath : null;
+    }
+
+    // ── テーマ適用 ──────────────────────────────────────────────
+
+    private void OnThemeChanged(EditorTheme theme)
+        => Dispatcher.UIThread.Post(() => ApplyTheme(theme));
 
     private void ApplyTheme(EditorTheme theme)
     {
@@ -109,55 +214,16 @@ public partial class EditorView : UserControl
         LineNumberBlock.FontFamily = new FontFamily(theme.EditorFontFamily);
         LineNumberBlock.FontSize = theme.EditorFontSize;
 
-        // 行番号パネルの背景
         if (LineNumberBlock.Parent is Border lineNumBorder)
             lineNumBorder.Background = ParseBrush(theme.EditorLineNumberBg);
 
-        // エディタ全体の背景
-        if (EditorTextBox.Parent is Grid editorGrid && editorGrid.Parent is Border editorBorder)
+        if (EditorTextBox.Parent is Grid editorGrid &&
+            editorGrid.Parent is Grid rowGrid &&
+            rowGrid.Parent is Border editorBorder)
             editorBorder.Background = ParseBrush(theme.EditorBackground);
     }
 
-    private static IBrush ParseBrush(string hex)
-        => new SolidColorBrush(Color.Parse(hex));
-
-    private async Task<string?> OnOpenFileRequested()
-    {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return null;
-
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-        {
-            Title = "テキストファイルを開く",
-            AllowMultiple = false,
-            FileTypeFilter =
-            [
-                new Avalonia.Platform.Storage.FilePickerFileType("テキストファイル") { Patterns = ["*.txt", "*.md"] },
-                new Avalonia.Platform.Storage.FilePickerFileType("すべてのファイル") { Patterns = ["*"] }
-            ]
-        });
-
-        return files.Count > 0 ? files[0].Path.LocalPath : null;
-    }
-
-    private async Task<string?> OnSaveFileRequested(string? currentPath)
-    {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return null;
-
-        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
-        {
-            Title = "名前を付けて保存",
-            SuggestedFileName = currentPath != null ? Path.GetFileName(currentPath) : "novel.txt",
-            FileTypeChoices =
-            [
-                new Avalonia.Platform.Storage.FilePickerFileType("テキストファイル") { Patterns = ["*.txt"] },
-                new Avalonia.Platform.Storage.FilePickerFileType("Markdown") { Patterns = ["*.md"] }
-            ]
-        });
-
-        return file?.Path.LocalPath;
-    }
+    private static IBrush ParseBrush(string hex) => new SolidColorBrush(Color.Parse(hex));
 
     // ── WebView2 プレビュー ────────────────────────────────────
 
@@ -165,8 +231,7 @@ public partial class EditorView : UserControl
     {
         base.OnAttachedToVisualTree(e);
 
-        Dispatcher.UIThread.Post(() => EditorTextBox.Focus(),
-            DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(() => EditorTextBox.Focus(), DispatcherPriority.Loaded);
 
         if (!OperatingSystem.IsWindows()) return;
         if (_webView != null) return;
@@ -176,7 +241,7 @@ public partial class EditorView : UserControl
 
         _webView.WebViewReady += (_, _) =>
         {
-            if (DataContext is EditorViewModel vm && !string.IsNullOrEmpty(vm.PreviewHtml))
+            if (DataContext is CardEditorViewModel vm && !string.IsNullOrEmpty(vm.PreviewHtml))
                 _webView.NavigateToString(vm.PreviewHtml);
         };
     }
@@ -184,10 +249,7 @@ public partial class EditorView : UserControl
     private void OnPreviewUpdateRequested(string xhtml)
     {
         if (_webView == null || !_webView.IsWebViewReady) return;
-        Dispatcher.UIThread.Post(() =>
-        {
-            _webView.NavigateToString(xhtml);
-        });
+        Dispatcher.UIThread.Post(() => _webView.NavigateToString(xhtml));
     }
 
     // ── スニペット挿入 ──────────────────────────────────────────
@@ -225,22 +287,14 @@ public partial class EditorView : UserControl
     {
         base.OnKeyDown(e);
 
-        if (DataContext is not EditorViewModel vm) return;
+        if (DataContext is not CardEditorViewModel vm) return;
 
         if (e.KeyModifiers == KeyModifiers.Control)
         {
             switch (e.Key)
             {
-                case Key.N:
-                    vm.NewFileCommand.Execute(null);
-                    e.Handled = true;
-                    break;
-                case Key.O:
-                    _ = vm.OpenFileCommand.ExecuteAsync(null);
-                    e.Handled = true;
-                    break;
                 case Key.S:
-                    _ = vm.SaveFileCommand.ExecuteAsync(null);
+                    vm.SaveProjectCommand.Execute(null);
                     e.Handled = true;
                     break;
                 case Key.R:
@@ -255,8 +309,8 @@ public partial class EditorView : UserControl
                     vm.InsertSnippetCommand.Execute("bold");
                     e.Handled = true;
                     break;
-                case Key.H:
-                    vm.InsertSnippetCommand.Execute("heading");
+                case Key.Delete:
+                    vm.DeleteItemCommand.Execute(null);
                     e.Handled = true;
                     break;
             }
@@ -265,16 +319,8 @@ public partial class EditorView : UserControl
         {
             switch (e.Key)
             {
-                case Key.S:
-                    _ = vm.SaveFileAsCommand.ExecuteAsync(null);
-                    e.Handled = true;
-                    break;
                 case Key.F:
                     vm.FormatTextCommand.Execute(null);
-                    e.Handled = true;
-                    break;
-                case Key.P:
-                    vm.InsertSnippetCommand.Execute("pagebreak");
                     e.Handled = true;
                     break;
             }

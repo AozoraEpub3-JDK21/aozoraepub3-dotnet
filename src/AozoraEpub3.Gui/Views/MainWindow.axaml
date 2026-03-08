@@ -116,6 +116,24 @@
                     Padding="16,12"
                     Classes="nav-item" />
 
+            <!-- カード執筆 -->
+            <Button Content="カード執筆"
+                    Command="{Binding NavigateToCommand}"
+                    CommandParameter="cards"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="16,12"
+                    Classes="nav-item" />
+
+            <!-- 本にする -->
+            <Button Content="本にする"
+                    Command="{Binding NavigateToCommand}"
+                    CommandParameter="project"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Padding="16,12"
+                    Classes="nav-item" />
+
           </StackPanel>
 
           <!-- 下部: 設定（常に最下部） -->

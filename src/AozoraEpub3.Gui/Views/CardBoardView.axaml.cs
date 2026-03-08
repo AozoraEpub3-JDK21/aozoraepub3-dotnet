@@ -7,31 +7,118 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using AozoraEpub3.Core.Editor;
 using AozoraEpub3.Gui.Controls;
-using AozoraEpub3.Gui.Services;
 using AozoraEpub3.Gui.ViewModels;
 
 namespace AozoraEpub3.Gui.Views;
 
-public partial class EditorView : UserControl
+public partial class CardBoardView : UserControl
 {
     private WebView2Host? _webView;
-    private readonly EditorSuggestService _suggestService = new();
-    private ListBox? _suggestList;
-    private Popup? _suggestPopup;
-    private string _suggestFilter = "";
-    private bool _isSuggestActive;
     private ScrollViewer? _textBoxScrollViewer;
+    private Point _dragStartPoint;
+    private bool _isDragging;
 
-    public EditorView()
+    public CardBoardView()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
 
         EditorTextBox.PropertyChanged += OnEditorTextBoxPropertyChanged;
         EditorTextBox.TextChanged += OnEditorTextBoxTextChanged;
-
-        // スクロール同期のため ScrollViewer を取得
         EditorTextBox.TemplateApplied += OnTextBoxTemplateApplied;
+
+        // ドラッグ＆ドロップ
+        CardListBox.AddHandler(DragDrop.DropEvent, OnCardDrop);
+        CardListBox.AddHandler(DragDrop.DragOverEvent, OnCardDragOver);
+        CardListBox.AddHandler(InputElement.PointerPressedEvent, OnCardPointerPressed, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        CardListBox.AddHandler(InputElement.PointerMovedEvent, OnCardPointerMoved, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        CardListBox.AddHandler(InputElement.PointerReleasedEvent, OnCardPointerReleased, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+    }
+
+    // ── ドラッグ＆ドロップ ─────────────────────────────────────────
+
+    private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(CardListBox).Properties.IsLeftButtonPressed)
+        {
+            _dragStartPoint = e.GetPosition(CardListBox);
+            _isDragging = false;
+        }
+    }
+
+    private async void OnCardPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!e.GetCurrentPoint(CardListBox).Properties.IsLeftButtonPressed) return;
+        if (_isDragging) return;
+
+        var pos = e.GetPosition(CardListBox);
+        var diff = pos - _dragStartPoint;
+        if (Math.Abs(diff.Y) < 10) return; // しきい値
+
+        // ドラッグ元のカードを特定
+        if (DataContext is not CardBoardViewModel vm || vm.SelectedCard == null) return;
+
+        _isDragging = true;
+        var data = new DataObject();
+        data.Set("CardIndex", vm.Cards.IndexOf(vm.SelectedCard));
+        await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
+        _isDragging = false;
+    }
+
+    private void OnCardPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _isDragging = false;
+    }
+
+    private void OnCardDragOver(object? sender, DragEventArgs e)
+    {
+#pragma warning disable CS0618 // DataObject uses legacy Data API
+        e.DragEffects = e.Data.Contains("CardIndex") ? DragDropEffects.Move : DragDropEffects.None;
+#pragma warning restore CS0618
+        e.Handled = true;
+    }
+
+    private void OnCardDrop(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not CardBoardViewModel vm) return;
+#pragma warning disable CS0618
+        if (!e.Data.Contains("CardIndex")) return;
+        var sourceIndex = (int)e.Data.Get("CardIndex")!;
+#pragma warning restore CS0618
+
+        // ドロップ先のインデックスを計算
+        var pos = e.GetPosition(CardListBox);
+        var targetIndex = GetDropTargetIndex(pos);
+        if (targetIndex < 0) targetIndex = vm.Cards.Count - 1;
+        if (sourceIndex == targetIndex) return;
+
+        vm.Cards.Move(sourceIndex, targetIndex);
+        vm.SelectedCard = vm.Cards[targetIndex];
+        // バッキングストアを同期
+        vm.NotifyStatsChanged();
+
+        e.Handled = true;
+    }
+
+    private int GetDropTargetIndex(Point position)
+    {
+        if (DataContext is not CardBoardViewModel vm) return -1;
+
+        // ListBox 内の各アイテムの位置からドロップ先を判定
+        for (int i = 0; i < CardListBox.ItemCount; i++)
+        {
+            var container = CardListBox.ContainerFromIndex(i);
+            if (container is not Control ctrl) continue;
+
+            var bounds = ctrl.Bounds;
+            var itemPos = ctrl.TranslatePoint(new Point(0, 0), CardListBox);
+            if (itemPos == null) continue;
+
+            var midY = itemPos.Value.Y + bounds.Height / 2;
+            if (position.Y < midY) return i;
+        }
+
+        return vm.Cards.Count - 1;
     }
 
     // ── 行番号同期 ──────────────────────────────────────────────
@@ -81,14 +168,22 @@ public partial class EditorView : UserControl
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
-        if (DataContext is EditorViewModel vm)
+        if (DataContext is CardBoardViewModel vm)
         {
             vm.PreviewUpdateRequested += OnPreviewUpdateRequested;
             vm.SnippetInsertRequested += OnSnippetInsertRequested;
-            vm.OpenFileRequested += OnOpenFileRequested;
-            vm.SaveFileRequested += OnSaveFileRequested;
             vm.ThemeChanged += OnThemeChanged;
             ApplyTheme(vm.CurrentTheme);
+
+            // カード選択変更時にプレビューも更新
+            vm.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(CardBoardViewModel.SelectedCard))
+                {
+                    Dispatcher.UIThread.Post(() => EditorTextBox.Focus(),
+                        DispatcherPriority.Loaded);
+                }
+            };
         }
     }
 
@@ -109,55 +204,15 @@ public partial class EditorView : UserControl
         LineNumberBlock.FontFamily = new FontFamily(theme.EditorFontFamily);
         LineNumberBlock.FontSize = theme.EditorFontSize;
 
-        // 行番号パネルの背景
         if (LineNumberBlock.Parent is Border lineNumBorder)
             lineNumBorder.Background = ParseBrush(theme.EditorLineNumberBg);
 
-        // エディタ全体の背景
         if (EditorTextBox.Parent is Grid editorGrid && editorGrid.Parent is Border editorBorder)
             editorBorder.Background = ParseBrush(theme.EditorBackground);
     }
 
     private static IBrush ParseBrush(string hex)
         => new SolidColorBrush(Color.Parse(hex));
-
-    private async Task<string?> OnOpenFileRequested()
-    {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return null;
-
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-        {
-            Title = "テキストファイルを開く",
-            AllowMultiple = false,
-            FileTypeFilter =
-            [
-                new Avalonia.Platform.Storage.FilePickerFileType("テキストファイル") { Patterns = ["*.txt", "*.md"] },
-                new Avalonia.Platform.Storage.FilePickerFileType("すべてのファイル") { Patterns = ["*"] }
-            ]
-        });
-
-        return files.Count > 0 ? files[0].Path.LocalPath : null;
-    }
-
-    private async Task<string?> OnSaveFileRequested(string? currentPath)
-    {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return null;
-
-        var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
-        {
-            Title = "名前を付けて保存",
-            SuggestedFileName = currentPath != null ? Path.GetFileName(currentPath) : "novel.txt",
-            FileTypeChoices =
-            [
-                new Avalonia.Platform.Storage.FilePickerFileType("テキストファイル") { Patterns = ["*.txt"] },
-                new Avalonia.Platform.Storage.FilePickerFileType("Markdown") { Patterns = ["*.md"] }
-            ]
-        });
-
-        return file?.Path.LocalPath;
-    }
 
     // ── WebView2 プレビュー ────────────────────────────────────
 
@@ -176,7 +231,7 @@ public partial class EditorView : UserControl
 
         _webView.WebViewReady += (_, _) =>
         {
-            if (DataContext is EditorViewModel vm && !string.IsNullOrEmpty(vm.PreviewHtml))
+            if (DataContext is CardBoardViewModel vm && !string.IsNullOrEmpty(vm.PreviewHtml))
                 _webView.NavigateToString(vm.PreviewHtml);
         };
     }
@@ -225,24 +280,12 @@ public partial class EditorView : UserControl
     {
         base.OnKeyDown(e);
 
-        if (DataContext is not EditorViewModel vm) return;
+        if (DataContext is not CardBoardViewModel vm) return;
 
         if (e.KeyModifiers == KeyModifiers.Control)
         {
             switch (e.Key)
             {
-                case Key.N:
-                    vm.NewFileCommand.Execute(null);
-                    e.Handled = true;
-                    break;
-                case Key.O:
-                    _ = vm.OpenFileCommand.ExecuteAsync(null);
-                    e.Handled = true;
-                    break;
-                case Key.S:
-                    _ = vm.SaveFileCommand.ExecuteAsync(null);
-                    e.Handled = true;
-                    break;
                 case Key.R:
                     vm.InsertSnippetCommand.Execute("ruby");
                     e.Handled = true;
@@ -259,16 +302,16 @@ public partial class EditorView : UserControl
                     vm.InsertSnippetCommand.Execute("heading");
                     e.Handled = true;
                     break;
+                case Key.Delete:
+                    vm.DeleteCardCommand.Execute(null);
+                    e.Handled = true;
+                    break;
             }
         }
         else if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift))
         {
             switch (e.Key)
             {
-                case Key.S:
-                    _ = vm.SaveFileAsCommand.ExecuteAsync(null);
-                    e.Handled = true;
-                    break;
                 case Key.F:
                     vm.FormatTextCommand.Execute(null);
                     e.Handled = true;

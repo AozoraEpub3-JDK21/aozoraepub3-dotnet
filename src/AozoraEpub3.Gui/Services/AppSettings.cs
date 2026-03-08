@@ -77,6 +77,19 @@ public sealed class GuiSettings
     public bool PageBreakChapter { get; set; } = false;
     public int PageBreakChapterSize { get; set; } = 0;
 
+    // ──── チートシート設定 ────
+    public bool ShowCheatSheetOnStartup { get; set; } = true;
+
+    // ──── エディタテーマ・フォント設定 ────
+    public string EditorThemeId { get; set; } = "";     // 空=アプリテーマ追従
+    public string EditorFontFamily { get; set; } = "";  // 空=テーマデフォルト
+    public double EditorFontSize { get; set; } = 0;     // 0=テーマデフォルト
+    public string PreviewFontFamily { get; set; } = "";
+    public double PreviewFontSize { get; set; } = 0;
+
+    // ──── マイグレーション提案 ────
+    public bool SuppressMigrationProposals { get; set; } = false;
+
     // ──── 最後に使用した設定 ────
     public string LastOutputDirectory { get; set; } = "";
     public int DownloadIntervalMs { get; set; } = 700;

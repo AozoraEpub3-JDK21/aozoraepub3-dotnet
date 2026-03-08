@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AozoraEpub3.Gui.ViewModels"
+             x:Class="AozoraEpub3.Gui.Views.CheatSheetPanel"
+             x:DataType="vm:CheatSheetViewModel">
+
+  <Border Background="#2D2D30" BorderBrush="#3E3E42" BorderThickness="1,0,0,0"
+          Padding="12" Width="280">
+    <Grid RowDefinitions="Auto,*">
+
+      <!-- ── ヘッダー ── -->
+      <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,8">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" Text="チートシート"
+                     FontWeight="SemiBold" FontSize="14" Foreground="#DCDCDC"/>
+          <Button Grid.Column="1" Content="×" Command="{Binding ToggleCommand}"
+                  Padding="4,0" FontSize="12" Background="Transparent"
+                  Foreground="#858585" BorderThickness="0"/>
+        </Grid>
+        <Separator/>
+      </StackPanel>
+
+      <!-- ── コンテンツ ── -->
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12">
+
+          <!-- 背中押しパネル（FirstTime/Stalled） -->
+          <Border IsVisible="{Binding IsMotivationVisible}"
+                  Background="#1E1E2E" CornerRadius="6" Padding="12">
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding MotivationText}"
+                         Foreground="#DCDCDC" FontSize="13"
+                         TextWrapping="Wrap" LineHeight="22"/>
+              <Separator Margin="0,4"/>
+              <StackPanel Orientation="Horizontal" Spacing="16">
+                <TextBlock FontSize="12" Foreground="#6A9955">
+                  <Run Text="合計: "/><Run Text="{Binding TotalWordCount, StringFormat='{}{0:N0}'}"/><Run Text="字"/>
+                </TextBlock>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- 操作ガイドパネル（FirstTime） -->
+          <Border IsVisible="{Binding IsHowToVisible}"
+                  Background="#1E2E1E" CornerRadius="6" Padding="12">
+            <StackPanel Spacing="4">
+              <TextBlock Text="{Binding HowToText}"
+                         Foreground="#DCDCDC" FontSize="12"
+                         TextWrapping="Wrap" LineHeight="20"
+                         FontFamily="BIZ UDGothic, MS Gothic, Consolas, monospace"/>
+              <Button Content="記法を見る →" Command="{Binding ShowReferenceCommand}"
+                      Padding="8,4" FontSize="12" Margin="0,4,0,0"
+                      HorizontalAlignment="Left"/>
+            </StackPanel>
+          </Border>
+
+          <!-- 記法リファレンスパネル（Writing） -->
+          <StackPanel IsVisible="{Binding IsReferenceVisible}" Spacing="4">
+            <TabControl SelectedIndex="{Binding ReferenceTabIndex}">
+              <TabItem Header="基本">
+                <TextBlock Text="{Binding BasicSyntaxText}"
+                           Foreground="#DCDCDC" FontSize="12"
+                           TextWrapping="Wrap" LineHeight="20" Margin="4"
+                           FontFamily="BIZ UDGothic, MS Gothic, Consolas, monospace"/>
+              </TabItem>
+              <TabItem Header="傍点">
+                <TextBlock Text="{Binding EmphasisSyntaxText}"
+                           Foreground="#DCDCDC" FontSize="12"
+                           TextWrapping="Wrap" LineHeight="20" Margin="4"
+                           FontFamily="BIZ UDGothic, MS Gothic, Consolas, monospace"/>
+              </TabItem>
+              <TabItem Header="構造">
+                <TextBlock Text="{Binding HeadingSyntaxText}"
+                           Foreground="#DCDCDC" FontSize="12"
+                           TextWrapping="Wrap" LineHeight="20" Margin="4"
+                           FontFamily="BIZ UDGothic, MS Gothic, Consolas, monospace"/>
+              </TabItem>
+              <TabItem Header="キー">
+                <TextBlock Text="{Binding ShortcutText}"
+                           Foreground="#DCDCDC" FontSize="12"
+                           TextWrapping="Wrap" LineHeight="20" Margin="4"
+                           FontFamily="BIZ UDGothic, MS Gothic, Consolas, monospace"/>
+              </TabItem>
+            </TabControl>
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+
+    </Grid>
+  </Border>
+
+</UserControl>

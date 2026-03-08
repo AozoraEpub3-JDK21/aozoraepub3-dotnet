@@ -201,8 +201,14 @@ public sealed partial class PreviewViewModel : ViewModelBase, IDisposable
     /// <summary>最大化モードのトグルを親に要求するイベント。</summary>
     public event Action? ToggleMaximizeRequested;
 
+    /// <summary>カード執筆モードへの遷移要求（層1→層2導線）。</summary>
+    public event Action? NavigateToCardsRequested;
+
     /// <summary>最大化トグルを外部から発火する。</summary>
     public void RequestToggleMaximize() => ToggleMaximizeRequested?.Invoke();
+
+    [RelayCommand]
+    private void NavigateToCards() => NavigateToCardsRequested?.Invoke();
 
     // ───── 内部 ────────────────────────────────────────────────────────
 

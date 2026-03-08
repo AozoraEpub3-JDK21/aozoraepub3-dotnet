@@ -1,10 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:AozoraEpub3.Gui.ViewModels"
+             xmlns:views="using:AozoraEpub3.Gui.Views"
              x:Class="AozoraEpub3.Gui.Views.EditorView"
              x:DataType="vm:EditorViewModel">
 
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
 
     <!-- ToolBar -->
     <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
@@ -34,11 +35,26 @@
         <Separator/>
         <ToggleButton Content="Preview" IsChecked="{Binding IsPreviewVisible}"
                       ToolTip.Tip="F5" Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <Button Content="校正" Command="{Binding ProofreadCommand}"
+                ToolTip.Tip="表記ゆれ・括弧不整合チェック" Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <Button Content="EPUB変換" Command="{Binding ConvertToEpubCommand}"
+                Padding="4,2" FontSize="12" FontWeight="SemiBold"/>
+        <Separator/>
+        <ToggleButton Content="？" IsChecked="{Binding CheatSheet.IsVisible}"
+                      ToolTip.Tip="F1" Padding="4,2" FontSize="12"/>
       </StackPanel>
     </ScrollViewer>
 
-    <!-- Editor + Preview Split -->
-    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*">
+    <!-- Editor + Preview Split + CheatSheet -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+      <!-- チートシートパネル（右端） -->
+      <views:CheatSheetPanel Grid.Column="1"
+                             DataContext="{Binding CheatSheet}"
+                             IsVisible="{Binding IsVisible}"/>
+      <!-- エディタ + プレビュー -->
+    <Grid Grid.Column="0" ColumnDefinitions="*,Auto,*">
 
       <!-- Editor with Line Numbers -->
       <Border Grid.Column="0" Background="#1E1E1E">
@@ -85,9 +101,40 @@
       </Border>
 
     </Grid>
+    </Grid>
+
+    <!-- 校正結果パネル -->
+    <Border Grid.Row="2"
+            IsVisible="{Binding IsProofreadingPanelVisible}"
+            Background="#1B2838" BorderBrush="#3E3E42" BorderThickness="0,1,0,0"
+            MaxHeight="150">
+      <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Background="#252526">
+          <TextBlock Grid.Column="0" Text="校正結果" Foreground="#DCDCDC"
+                     FontWeight="SemiBold" FontSize="12" Margin="8,4"/>
+          <Button Grid.Column="1" Content="✕" Command="{Binding CloseProofreadingCommand}"
+                  Foreground="#999" Background="Transparent" BorderThickness="0"
+                  Padding="4,2" FontSize="12"/>
+        </Grid>
+        <ListBox Grid.Row="1" ItemsSource="{Binding ProofreadingResults}"
+                 Background="Transparent" BorderThickness="0">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,2">
+                <TextBlock Text="{Binding Rule}" Foreground="#569CD6" FontSize="11" MinWidth="25"/>
+                <TextBlock Text="{Binding Line, StringFormat='L{0}'}" Foreground="#6A9955" FontSize="11" MinWidth="30"/>
+                <TextBlock Text="{Binding Message}" Foreground="#DCDCDC" FontSize="11" TextWrapping="NoWrap"/>
+                <TextBlock Text="{Binding Suggestion, StringFormat='→ {0}'}" Foreground="#CE9178" FontSize="11"
+                           IsVisible="{Binding Suggestion, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+    </Border>
 
     <!-- StatusBar -->
-    <Border Grid.Row="2" Background="#2D2D30" Padding="8,4">
+    <Border Grid.Row="3" Background="#2D2D30" Padding="8,4">
       <StackPanel Orientation="Horizontal" Spacing="16">
         <TextBlock Text="{Binding WindowTitle}" FontWeight="SemiBold"/>
         <TextBlock>

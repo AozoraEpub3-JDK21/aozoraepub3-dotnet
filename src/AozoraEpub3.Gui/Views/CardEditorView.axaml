@@ -1,0 +1,211 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AozoraEpub3.Gui.ViewModels"
+             xmlns:views="using:AozoraEpub3.Gui.Views"
+             x:Class="AozoraEpub3.Gui.Views.CardEditorView"
+             x:DataType="vm:CardEditorViewModel">
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- ══════ Row 0: ToolBar ══════ -->
+    <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+      <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,4">
+        <Button Content="新規" Command="{Binding NewProjectCommand}" Padding="4,2" FontSize="12"/>
+        <Button Content="開く" Command="{Binding OpenProjectCommand}" Padding="4,2" FontSize="12"/>
+        <Button Content="保存" Command="{Binding SaveProjectCommand}" Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <Button Content="+ 話" Command="{Binding AddEpisodeCommand}"
+                ToolTip.Tip="新しいエピソードを追加" Padding="4,2" FontSize="12"/>
+        <Button Content="+ 章" Command="{Binding AddChapterCommand}"
+                ToolTip.Tip="新しい章を追加" Padding="4,2" FontSize="12"/>
+        <Button Content="+ メモ" Command="{Binding AddMemoCommand}"
+                ToolTip.Tip="フリーカード（EPUBに含まれない）" Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <ComboBox ItemsSource="{Binding ModeNames}"
+                  SelectedIndex="{Binding SelectedModeIndex}"
+                  Width="75" FontSize="12" VerticalAlignment="Center"/>
+        <Separator/>
+        <Button Content="ルビ" Command="{Binding InsertSnippetCommand}" CommandParameter="ruby"
+                ToolTip.Tip="Ctrl+R" Padding="4,2" FontSize="12"/>
+        <Button Content="傍点" Command="{Binding InsertSnippetCommand}" CommandParameter="emphasis"
+                ToolTip.Tip="Ctrl+E" Padding="4,2" FontSize="12"/>
+        <Button Content="太字" Command="{Binding InsertSnippetCommand}" CommandParameter="bold"
+                ToolTip.Tip="Ctrl+B" Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <ToggleButton Content="縦書" IsChecked="{Binding IsVertical}" Padding="4,2" FontSize="12"/>
+        <Button Content="整形" Command="{Binding FormatTextCommand}" Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <ToggleButton Content="Preview" IsChecked="{Binding IsPreviewVisible}"
+                      ToolTip.Tip="F5" Padding="4,2" FontSize="12"/>
+        <Separator/>
+        <Button Content="EPUB変換" Command="{Binding ConvertToEpubCommand}"
+                Padding="4,2" FontSize="12" FontWeight="SemiBold"/>
+        <Separator/>
+        <ToggleButton Content="？" IsChecked="{Binding CheatSheet.IsVisible}"
+                      ToolTip.Tip="F1" Padding="4,2" FontSize="12"/>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ══════ Row 1: カードリスト + エディタ + プレビュー + チートシート ══════ -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+      <!-- チートシートパネル -->
+      <views:CheatSheetPanel Grid.Column="1"
+                             DataContext="{Binding CheatSheet}"
+                             IsVisible="{Binding IsVisible}"/>
+
+    <Grid Grid.Column="0" ColumnDefinitions="220,Auto,*">
+
+      <!-- ── Col 0: カードツリーリスト ── -->
+      <Border Grid.Column="0" Background="#252526" Padding="4">
+        <Grid RowDefinitions="*,Auto">
+
+          <!-- プロジェクト未読み込み時 -->
+          <StackPanel Grid.Row="0"
+                      IsVisible="{Binding !IsProjectLoaded}"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"
+                      Spacing="12">
+            <TextBlock Text="プロジェクトを開くか、&#xa;新規作成してください"
+                       TextAlignment="Center" Foreground="#858585"
+                       FontSize="13" TextWrapping="Wrap"/>
+            <Button Content="新規プロジェクト" Command="{Binding NewProjectCommand}"
+                    HorizontalAlignment="Center" Padding="12,8"/>
+            <Button Content="プロジェクトを開く" Command="{Binding OpenProjectCommand}"
+                    HorizontalAlignment="Center" Padding="12,8"/>
+          </StackPanel>
+
+          <!-- ツリーリスト -->
+          <ListBox x:Name="TreeListBox" Grid.Row="0"
+                   IsVisible="{Binding IsProjectLoaded}"
+                   ItemsSource="{Binding TreeItems}"
+                   SelectedItem="{Binding SelectedTreeItem}"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   DragDrop.AllowDrop="True">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="{x:Type vm:TreeCardItem}">
+                <Border Padding="6,4" Margin="{Binding Level, Converter={x:Static vm:IndentConverter.Instance}}"
+                        CornerRadius="3">
+                  <Border.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem Header="上に移動"
+                                Command="{Binding $parent[ListBox].DataContext.MoveItemUpCommand}"/>
+                      <MenuItem Header="下に移動"
+                                Command="{Binding $parent[ListBox].DataContext.MoveItemDownCommand}"/>
+                      <Separator/>
+                      <MenuItem Header="複製"
+                                Command="{Binding $parent[ListBox].DataContext.DuplicateItemCommand}"/>
+                      <Separator/>
+                      <MenuItem Header="ステータス変更">
+                        <MenuItem Header="下書き"
+                                  Command="{Binding $parent[ListBox].DataContext.ChangeStatusCommand}"
+                                  CommandParameter="Draft"/>
+                        <MenuItem Header="執筆中"
+                                  Command="{Binding $parent[ListBox].DataContext.ChangeStatusCommand}"
+                                  CommandParameter="Writing"/>
+                        <MenuItem Header="完成"
+                                  Command="{Binding $parent[ListBox].DataContext.ChangeStatusCommand}"
+                                  CommandParameter="Done"/>
+                        <MenuItem Header="改稿中"
+                                  Command="{Binding $parent[ListBox].DataContext.ChangeStatusCommand}"
+                                  CommandParameter="Revision"/>
+                      </MenuItem>
+                      <Separator/>
+                      <MenuItem Header="削除"
+                                Command="{Binding $parent[ListBox].DataContext.DeleteItemCommand}"/>
+                    </ContextMenu>
+                  </Border.ContextMenu>
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding DisplayTitle}" FontWeight="SemiBold"
+                               FontSize="12" Foreground="#DCDCDC"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding DisplayInfo}"
+                               FontSize="11" Foreground="#6A9955"
+                               IsVisible="{Binding DisplayInfo, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <!-- 追加ボタン (プロジェクト読み込み時) -->
+          <StackPanel Grid.Row="1" Spacing="2" Margin="4"
+                      IsVisible="{Binding IsProjectLoaded}">
+            <Button Content="+ 話を追加" Command="{Binding AddEpisodeCommand}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                    Padding="6" FontSize="12"/>
+          </StackPanel>
+
+        </Grid>
+      </Border>
+
+      <!-- ── Col 1: スプリッター ── -->
+      <GridSplitter Grid.Column="1" Width="4" Background="Gray" Opacity="0.3"/>
+
+      <!-- ── Col 2: エディタ + プレビュー ── -->
+      <Grid Grid.Column="2" ColumnDefinitions="*,Auto,*">
+
+        <!-- エディタ -->
+        <Border Grid.Column="0" Background="#1E1E1E">
+          <Grid RowDefinitions="Auto,*">
+            <!-- カードタイトル入力 -->
+            <Border Grid.Row="0" Background="#2D2D30" Padding="4"
+                    BorderBrush="#3E3E42" BorderThickness="0,0,0,1"
+                    IsVisible="{Binding IsProjectLoaded}">
+              <TextBox Text="{Binding ActiveCardTitle, Mode=TwoWay}"
+                       Watermark="カードタイトル"
+                       Background="Transparent" BorderThickness="0"
+                       Foreground="#DCDCDC" FontSize="13" FontWeight="SemiBold"/>
+            </Border>
+
+            <!-- テキストエディタ -->
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+              <Border Grid.Column="0" Background="#252526" Padding="8,4,8,4"
+                      BorderBrush="#3E3E42" BorderThickness="0,0,1,0">
+                <TextBlock x:Name="LineNumberBlock"
+                           FontFamily="BIZ UDGothic, MS Gothic, Consolas, monospace"
+                           FontSize="14" Foreground="#858585"
+                           TextAlignment="Right" MinWidth="30" Text="1"/>
+              </Border>
+
+              <TextBox x:Name="EditorTextBox" Grid.Column="1"
+                       Text="{Binding ActiveCardBody, Mode=TwoWay}"
+                       AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                       FontFamily="BIZ UDGothic, MS Gothic, Consolas, monospace"
+                       FontSize="14"
+                       Background="#1E1E1E" Foreground="#DCDCDC"
+                       CaretBrush="#AEAFAD" SelectionBrush="#264F78"
+                       BorderThickness="0" Padding="4"/>
+            </Grid>
+          </Grid>
+        </Border>
+
+        <!-- スプリッター -->
+        <GridSplitter Grid.Column="1" Width="4" Background="Gray" Opacity="0.3"
+                      IsVisible="{Binding IsPreviewVisible}"/>
+
+        <!-- プレビュー -->
+        <Border Grid.Column="2" IsVisible="{Binding IsPreviewVisible}"
+                BorderBrush="Gray" BorderThickness="1,0,0,0">
+          <Grid x:Name="PreviewContainer"/>
+        </Border>
+
+      </Grid>
+    </Grid>
+    </Grid>
+
+    <!-- ══════ Row 2: StatusBar ══════ -->
+    <Border Grid.Row="2" Background="#2D2D30" Padding="8,4">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Grid.Column="0" Text="{Binding StatsText}" Foreground="#DCDCDC"/>
+        <!-- 進捗バー（目標設定時のみ） -->
+        <ProgressBar Grid.Column="1"
+                     Value="{Binding ProgressPercent}" Maximum="100"
+                     Width="120" Height="8"
+                     IsVisible="{Binding TargetWordCount}"
+                     Margin="8,0,0,0"/>
+      </Grid>
+    </Border>
+
+  </Grid>
+</UserControl>

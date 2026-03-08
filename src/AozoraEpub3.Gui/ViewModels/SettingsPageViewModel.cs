@@ -1,6 +1,7 @@
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using AozoraEpub3.Core.Editor;
 using AozoraEpub3.Gui.Services;
 
 namespace AozoraEpub3.Gui.ViewModels;
@@ -54,6 +55,59 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
         };
         LocalizationService.SetTheme(variant);
     }
+
+    // ───── エディタテーマ ──────────────────────────────────────────────────────
+
+    /// <summary>テーマ名の表示用リスト</summary>
+    public string[] EditorThemeNames { get; } = EditorThemes.All.Select(t => t.DisplayName).ToArray();
+
+    /// <summary>選択中のエディタテーマインデックス</summary>
+    [ObservableProperty]
+    private int _editorThemeIndex = 3; // DarkDefault
+
+    /// <summary>エディタテーマ変更通知。MainWindowViewModel がハンドルする。</summary>
+    public event Action<EditorTheme>? EditorThemeSelectionChanged;
+
+    partial void OnEditorThemeIndexChanged(int value)
+    {
+        if (value >= 0 && value < EditorThemes.All.Length)
+            EditorThemeSelectionChanged?.Invoke(EditorThemes.All[value]);
+    }
+
+    /// <summary>テーマIDからインデックスを設定する（設定読み込み用）</summary>
+    public void SetEditorThemeById(string themeId)
+    {
+        for (int i = 0; i < EditorThemes.All.Length; i++)
+        {
+            if (EditorThemes.All[i].Id == themeId)
+            {
+                EditorThemeIndex = i;
+                return;
+            }
+        }
+    }
+
+    // ───── フォント設定 ──────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private string _editorFontFamily = "";
+
+    [ObservableProperty]
+    private double _editorFontSize = 14;
+
+    [ObservableProperty]
+    private string _previewFontFamily = "";
+
+    [ObservableProperty]
+    private double _previewFontSize = 16;
+
+    /// <summary>フォント設定変更通知</summary>
+    public event Action? FontSettingsChanged;
+
+    partial void OnEditorFontFamilyChanged(string value) => FontSettingsChanged?.Invoke();
+    partial void OnEditorFontSizeChanged(double value) => FontSettingsChanged?.Invoke();
+    partial void OnPreviewFontFamilyChanged(string value) => FontSettingsChanged?.Invoke();
+    partial void OnPreviewFontSizeChanged(double value) => FontSettingsChanged?.Invoke();
 
     // ───── epubcheck ─────────────────────────────────────────────────────────
 
