@@ -175,13 +175,17 @@ public partial class CardBoardView : UserControl
             vm.ThemeChanged += OnThemeChanged;
             ApplyTheme(vm.CurrentTheme);
 
-            // カード選択変更時にプレビューも更新
+            // カード選択変更時にプレビューも更新 + PropertyChanged 経由のプレビュー更新
             vm.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName == nameof(CardBoardViewModel.SelectedCard))
                 {
                     Dispatcher.UIThread.Post(() => EditorTextBox.Focus(),
                         DispatcherPriority.Loaded);
+                }
+                else if (args.PropertyName == nameof(CardBoardViewModel.PreviewHtml))
+                {
+                    OnPreviewUpdateRequested(vm.PreviewHtml);
                 }
             };
         }
@@ -238,9 +242,9 @@ public partial class CardBoardView : UserControl
 
     private void OnPreviewUpdateRequested(string xhtml)
     {
-        if (_webView == null || !_webView.IsWebViewReady) return;
         Dispatcher.UIThread.Post(() =>
         {
+            if (_webView == null || !_webView.IsWebViewReady) return;
             _webView.NavigateToString(xhtml);
         });
     }

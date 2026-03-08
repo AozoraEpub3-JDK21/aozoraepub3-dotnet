@@ -89,6 +89,13 @@ public partial class EditorView : UserControl
             vm.SaveFileRequested += OnSaveFileRequested;
             vm.ThemeChanged += OnThemeChanged;
             ApplyTheme(vm.CurrentTheme);
+
+            // PropertyChanged 経由でもプレビューを更新（イベント到達漏れ対策）
+            vm.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(EditorViewModel.PreviewHtml))
+                    OnPreviewUpdateRequested(vm.PreviewHtml);
+            };
         }
     }
 
@@ -183,9 +190,9 @@ public partial class EditorView : UserControl
 
     private void OnPreviewUpdateRequested(string xhtml)
     {
-        if (_webView == null || !_webView.IsWebViewReady) return;
         Dispatcher.UIThread.Post(() =>
         {
+            if (_webView == null || !_webView.IsWebViewReady) return;
             _webView.NavigateToString(xhtml);
         });
     }
