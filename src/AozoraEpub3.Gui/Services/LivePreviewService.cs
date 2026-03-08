@@ -25,45 +25,28 @@ public sealed class LivePreviewService
     /// <summary>
     /// エディタテキストを縦書き XHTML に変換する。
     /// </summary>
-    /// <param name="editorText">ハイブリッド記法テキスト</param>
-    /// <param name="vertical">縦書きか</param>
-    /// <returns>完全な XHTML 文字列</returns>
     public string ConvertToXhtml(string editorText, bool vertical = true)
     {
         if (string.IsNullOrWhiteSpace(editorText))
             return BuildXhtml("", vertical);
-
-        // 1. ハイブリッド記法 → 青空文庫記法
         var aozoraText = _engine.FormatAndConvert(editorText);
-
-        // 2. 青空文庫記法 → XHTML body
         var bodyHtml = ConvertAozoraToXhtmlBody(aozoraText);
-
-        // 3. XHTML テンプレートに埋め込み
         return BuildXhtml(bodyHtml, vertical);
     }
 
-    /// <summary>
-    /// Lint 警告のみ取得する（テキストは変更しない）。
-    /// </summary>
+    /// <summary>Lint 警告のみ取得する。</summary>
     public IReadOnlyList<LintWarning> GetLintWarnings(string editorText)
         => _engine.GetLintWarnings(editorText);
 
-    /// <summary>
-    /// 変換プロファイルを変更して新しいインスタンスを返す。
-    /// </summary>
+    /// <summary>変換プロファイルを変更して新しいインスタンスを返す。</summary>
     public static LivePreviewService Create(ConversionProfile profile) => new(profile);
 
     private string ConvertAozoraToXhtmlBody(string aozoraText)
     {
-        // ダミーヘッダーを付加: AozoraEpub3Converter は先頭行をタイトル・著者として消費するため、
-        // ユーザーのテキストがすべて本文として処理されるようにする。
         var fullText = "プレビュー\n著者\n\n" + aozoraText;
-
         var previewWriter = new PreviewWriter();
         var converter = new AozoraEpub3Converter(previewWriter, "");
 
-        // 第1パス: BookInfo 取得
         BookInfo bookInfo;
         using (var reader1 = new StringReader(fullText))
         {
@@ -72,16 +55,17 @@ public sealed class LivePreviewService
                 BookInfo.TitleType.TITLE_AUTHOR, false);
         }
         bookInfo.Vertical = true;
-        // TITLE_NORMAL: タイトル行をそのまま出力（null 出力抑制を回避）
-        bookInfo.TitlePageType = BookInfo.TITLE_NORMAL;
+        bookInfo.TitlePageType = BookInfo.TITLE_NONE;
         _cachedBookInfo = bookInfo;
 
-        // 第2パス: XHTML body 生成
         var bodyWriter = new StringWriter();
         using var reader2 = new StringReader(fullText);
         converter.ConvertTextToEpub3(bodyWriter, reader2, bookInfo);
 
-        return bodyWriter.ToString();
+        var body = bodyWriter.ToString();
+        if (body.StartsWith("<p><br/></p>\n"))
+            body = body.Substring("<p><br/></p>\n".Length);
+        return body;
     }
 
     private static string BuildXhtml(string bodyContent, bool vertical)
@@ -98,6 +82,7 @@ public sealed class LivePreviewService
             html {
                 writing-mode: {{writingMode}};
                 -webkit-writing-mode: {{writingMode}};
+                background-color: #ffffff;
             }
             body {
                 font-family: "ＭＳ 明朝", "Yu Mincho", serif;
@@ -105,6 +90,8 @@ public sealed class LivePreviewService
                 line-height: 1.8;
                 margin: 0;
                 padding: 2em 3em;
+                background-color: #ffffff;
+                color: #1a1a1a;
             }
             p { text-indent: 1em; margin: 0; }
             .bold { font-weight: bold; }

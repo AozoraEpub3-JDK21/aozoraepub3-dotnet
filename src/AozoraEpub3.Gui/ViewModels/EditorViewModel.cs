@@ -51,7 +51,7 @@ public sealed partial class EditorViewModel : ViewModelBase
     /// <summary>プレビュー更新要求イベント。引数は XHTML 文字列。</summary>
     public event Action<string>? PreviewUpdateRequested;
 
-    public string[] ModeNames { get; } = ["汎用", "なろう", "カクヨム"];
+    public string[] ModeNames { get; } = ["標準", "なろう", "カクヨム"];
 
     public EditorViewModel()
     {
@@ -103,7 +103,6 @@ public sealed partial class EditorViewModel : ViewModelBase
             _ => ConversionProfile.Default
         };
         _previewService = new LivePreviewService(profile);
-        // 再変換トリガー
         OnEditorTextChanged(EditorText);
     }
 

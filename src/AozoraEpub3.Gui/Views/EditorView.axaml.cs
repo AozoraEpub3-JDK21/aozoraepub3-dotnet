@@ -37,12 +37,10 @@ public partial class EditorView : UserControl
 
     private void OnTextBoxTemplateApplied(object? sender, TemplateAppliedEventArgs e)
     {
-        // TextBox 内部の ScrollViewer を取得
         _textBoxScrollViewer = EditorTextBox.FindDescendantOfType<ScrollViewer>();
         if (_textBoxScrollViewer != null)
         {
             _textBoxScrollViewer.ScrollChanged += OnTextBoxScrollChanged;
-            // 行番号パネルの Margin を ScrollViewer のオフセットに同期
             UpdateLineNumberScroll();
         }
     }
@@ -55,7 +53,6 @@ public partial class EditorView : UserControl
     private void UpdateLineNumberScroll()
     {
         if (_textBoxScrollViewer == null) return;
-        // 行番号パネルの垂直位置を TextBox のスクロールに同期
         var offset = _textBoxScrollViewer.Offset;
         LineNumberBlock.Margin = new Thickness(0, -offset.Y + 4, 0, 0);
     }
@@ -172,7 +169,6 @@ public partial class EditorView : UserControl
 
             if (request.IsLineLevel)
             {
-                // 行頭を探す
                 var lineStart = text.LastIndexOf('\n', Math.Max(0, selStart - 1)) + 1;
                 var newText = text.Insert(lineStart, request.Text + "\n");
                 EditorTextBox.Text = newText;

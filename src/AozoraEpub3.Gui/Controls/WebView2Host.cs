@@ -36,12 +36,8 @@ public sealed class WebView2Host : NativeControlHost, IDisposable
 
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
     {
-        // NativeControlHost が管理する子ウィンドウを作成
         _hwndHost = CreateHostWindow(parent.Handle);
-
-        // WebView2 の非同期初期化を開始
         _ = InitializeAsync(_hwndHost);
-
         return new PlatformHandle(_hwndHost, "HWND");
     }
 
@@ -340,15 +336,11 @@ public sealed class WebView2Host : NativeControlHost, IDisposable
         const int WS_CLIPCHILDREN = 0x02000000;
 
         return CreateWindowEx(
-            0,
-            "Static",
-            "",
+            0, "Static", "",
             WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
             0, 0, 1, 1,
-            parentHwnd,
-            IntPtr.Zero,
-            GetModuleHandle(null),
-            IntPtr.Zero);
+            parentHwnd, IntPtr.Zero,
+            GetModuleHandle(null), IntPtr.Zero);
     }
 
     [StructLayout(LayoutKind.Sequential)]
