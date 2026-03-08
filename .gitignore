@@ -8,6 +8,13 @@
 .claude/
 _patch_review*.py
 
+# ビルド成果物
+dist/
+*.zip
+
+# Playwright MCP 自動化ツール
+.playwright-mcp/
+
 # Java 比較テスト用リファレンスファイル（generate-reference-epubs.ps1 で生成）
 tests/integration/reference/
 

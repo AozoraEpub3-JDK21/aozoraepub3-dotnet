@@ -2,6 +2,21 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## VISIONの一言
+「読む人を作る人に変えるアプリ」（docs/VISION.md 参照）
+ 物事を判断するときの最重要基準としてください
+
+## 設計の3層構造
+- 層1: 読む/変換（URL→EPUB）
+- 層2: 書く（初心者カード）
+- 層3: 本にする（編集カード）
+
+## 重要ドキュメント
+- docs/VISION.md — ビジョン全文
+- docs/feature-app-redesign-v2.md — 全体設計
+- docs/feature-editor-phase7.md — E7詳細設計（最新）
+
+
 ## Project Overview
 
 This is a .NET 10 C# port of the Java application [AozoraEpub3](https://github.com/hmdev/AozoraEpub3), which converts Aozora Bunko-format text files (and web novel pages) into EPUB3. The Java source reference is at `D:\git\AozoraEpub3\AozoraEpub3\`.
