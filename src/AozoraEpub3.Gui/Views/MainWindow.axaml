@@ -9,16 +9,9 @@
         MinWidth="800" MinHeight="560"
         WindowStartupLocation="CenterScreen">
 
-  <!--
-    ══════════════════════════════════════════════════════
-    Shell レイアウト
-    Row 0: ヘッダーバー（タイトル + 言語トグル）
-    Row 1: SplitView（サイドバー + メインコンテンツ）
-    ══════════════════════════════════════════════════════
-  -->
   <Grid RowDefinitions="Auto,*">
 
-    <!-- ══════ Row 0: ヘッダー ══════ -->
+    <!-- ヘッダー -->
     <Border Grid.Row="0"
             IsVisible="{Binding IsHeaderVisible}"
             Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
@@ -26,14 +19,10 @@
             BorderThickness="0,0,0,1"
             Padding="16,0">
       <Grid ColumnDefinitions="*,Auto" Height="48">
-
-        <!-- アプリタイトル -->
         <TextBlock Grid.Column="0"
                    Text="{DynamicResource Str_App_Title}"
                    FontSize="16" FontWeight="SemiBold"
                    VerticalAlignment="Center" />
-
-        <!-- 言語切り替えトグル -->
         <StackPanel Grid.Column="1" Orientation="Horizontal"
                     Spacing="4" VerticalAlignment="Center">
           <Button Content="{DynamicResource Str_Lang_Ja}"
@@ -47,15 +36,10 @@
                   Classes.accent="{Binding !IsJapanese}"
                   Padding="10,4" />
         </StackPanel>
-
       </Grid>
     </Border>
 
-    <!-- ══════ Row 1: SplitView（サイドバー + コンテンツ）══════ -->
-    <!--
-      DisplayMode="CompactInline" : サイドバーが常に表示（compact幅で常駐）
-      PaneWidth : アイコン + テキストのラベル幅
-    -->
+    <!-- SplitView（サイドバー + コンテンツ） -->
     <SplitView Grid.Row="1"
                IsPaneOpen="{Binding IsSidebarVisible}"
                DisplayMode="CompactInline"
@@ -64,98 +48,77 @@
                OpenPaneLength="180"
                CompactPaneLength="0">
 
-      <!-- ── サイドバー ── -->
       <SplitView.Pane>
         <Grid RowDefinitions="*,Auto">
 
-          <!-- 上部ナビゲーション -->
-          <StackPanel Grid.Row="0" Margin="0,12,0,0">
+          <!-- 上部ナビゲーション（3層） -->
+          <StackPanel Grid.Row="0" Margin="0,16,0,0" Spacing="2">
 
-            <!-- ローカル変換 -->
-            <Button Content="{DynamicResource Str_Nav_LocalConvert}"
-                    Command="{Binding NavigateToCommand}"
-                    CommandParameter="local"
+            <!-- ① 読む -->
+            <Button Command="{Binding NavigateToCommand}"
+                    CommandParameter="read"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Left"
                     Padding="16,12"
-                    Classes="nav-item" />
+                    Classes="nav-item"
+                    Classes.active="{Binding IsReadPage}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="&#x1F4D6;" FontSize="18" VerticalAlignment="Center" />
+                <TextBlock Text="読む" FontSize="14" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
 
-            <!-- Web 変換 -->
-            <Button Content="{DynamicResource Str_Nav_WebConvert}"
-                    Command="{Binding NavigateToCommand}"
-                    CommandParameter="web"
+            <!-- ② 書く -->
+            <Button Command="{Binding NavigateToCommand}"
+                    CommandParameter="write"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Left"
                     Padding="16,12"
-                    Classes="nav-item" />
+                    Classes="nav-item"
+                    Classes.active="{Binding IsWritePage}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="&#x270F;&#xFE0F;" FontSize="18" VerticalAlignment="Center" />
+                <TextBlock Text="書く" FontSize="14" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
 
-            <!-- プレビュー -->
-            <Button Content="{DynamicResource Str_Nav_Preview}"
-                    Command="{Binding NavigateToCommand}"
-                    CommandParameter="preview"
+            <!-- ③ 本にする -->
+            <Button Command="{Binding NavigateToCommand}"
+                    CommandParameter="publish"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Left"
                     Padding="16,12"
-                    Classes="nav-item" />
-
-            <!-- 検証 -->
-            <Button Content="{DynamicResource Str_Nav_Validate}"
-                    Command="{Binding NavigateToCommand}"
-                    CommandParameter="validate"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Left"
-                    Padding="16,12"
-                    Classes="nav-item" />
-
-            <!-- 執筆 -->
-            <Button Content="執筆"
-                    Command="{Binding NavigateToCommand}"
-                    CommandParameter="editor"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Left"
-                    Padding="16,12"
-                    Classes="nav-item" />
-
-            <!-- カード執筆 -->
-            <Button Content="カード執筆"
-                    Command="{Binding NavigateToCommand}"
-                    CommandParameter="cards"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Left"
-                    Padding="16,12"
-                    Classes="nav-item" />
-
-            <!-- 本にする -->
-            <Button Content="本にする"
-                    Command="{Binding NavigateToCommand}"
-                    CommandParameter="project"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Left"
-                    Padding="16,12"
-                    Classes="nav-item" />
+                    Classes="nav-item"
+                    Classes.active="{Binding IsPublishPage}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="&#x1F4D8;" FontSize="18" VerticalAlignment="Center" />
+                <TextBlock Text="本にする" FontSize="14" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
 
           </StackPanel>
 
-          <!-- 下部: 設定（常に最下部） -->
+          <!-- 下部固定：設定 -->
           <StackPanel Grid.Row="1" Margin="0,0,0,12">
-            <Button Content="{DynamicResource Str_Nav_Settings}"
-                    Command="{Binding NavigateToCommand}"
+            <Button Command="{Binding NavigateToCommand}"
                     CommandParameter="settings"
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Left"
                     Padding="16,12"
-                    Classes="nav-item" />
+                    Classes="nav-item"
+                    Classes.active="{Binding IsSettingsPage}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="&#x2699;&#xFE0F;" FontSize="18" VerticalAlignment="Center" />
+                <TextBlock Text="{DynamicResource Str_Nav_Settings}"
+                           FontSize="14" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
           </StackPanel>
 
         </Grid>
       </SplitView.Pane>
 
-      <!-- ── メインコンテンツ（SPA ContentControl）── -->
       <SplitView.Content>
-        <!--
-          CurrentPage が LocalConvertViewModel / WebConvertViewModel / SettingsPageViewModel
-          に切り替わると、App.axaml の DataTemplates が対応する View を自動選択する。
-        -->
         <ContentControl Content="{Binding CurrentPage}"
                         HorizontalContentAlignment="Stretch"
                         VerticalContentAlignment="Stretch" />
@@ -164,23 +127,34 @@
     </SplitView>
   </Grid>
 
-  <!-- ══════ スタイル定義 ══════ -->
   <Window.Styles>
-    <!-- ナビゲーションボタン共通スタイル -->
     <Style Selector="Button.nav-item">
+      <Setter Property="Background"      Value="Transparent" />
+      <Setter Property="BorderThickness"  Value="0" />
+      <Setter Property="CornerRadius"    Value="0" />
+      <Setter Property="FontSize"        Value="14" />
+    </Style>
+    <Style Selector="Button.nav-item /template/ ContentPresenter">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="FontSize" Value="14" />
     </Style>
     <Style Selector="Button.nav-item:pointerover /template/ ContentPresenter">
       <Setter Property="Background"
               Value="{DynamicResource SystemControlHighlightListLowBrush}" />
     </Style>
-    <!-- accent クラス: 選択中の言語ボタン強調 -->
-    <Style Selector="Button.accent">
+    <Style Selector="Button.nav-item.active">
       <Setter Property="Background"
-              Value="{DynamicResource SystemAccentColor}" />
+              Value="{DynamicResource SystemControlHighlightListMediumBrush}" />
+    </Style>
+    <Style Selector="Button.nav-item.active /template/ ContentPresenter">
+      <Setter Property="Background"
+              Value="{DynamicResource SystemControlHighlightListMediumBrush}" />
+    </Style>
+    <Style Selector="Button.nav-item.active:pointerover /template/ ContentPresenter">
+      <Setter Property="Background"
+              Value="{DynamicResource SystemControlHighlightListAccentLowBrush}" />
+    </Style>
+    <Style Selector="Button.accent">
+      <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
     </Style>
   </Window.Styles>
 

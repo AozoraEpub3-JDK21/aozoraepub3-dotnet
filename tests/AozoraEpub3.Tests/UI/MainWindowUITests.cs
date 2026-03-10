@@ -16,7 +16,7 @@ public class MainWindowUITests
         var window = new MainWindow { DataContext = vm };
         window.Show();
 
-        Assert.IsType<LocalConvertViewModel>(vm.CurrentPage);
+        Assert.IsType<ReadViewModel>(vm.CurrentPage);
     }
 
     [AvaloniaFact]
@@ -97,8 +97,8 @@ public class MainWindowUITests
             .Where(b => b.Classes.Contains("nav-item"))
             .ToList();
 
-        // 7 nav items + 1 settings = at least 7 nav-item buttons
-        Assert.True(navButtons.Count >= 7, $"Expected at least 7 nav-item buttons, found {navButtons.Count}");
+        // 3 nav items (読む/書く/本にする) + 1 settings = 4 nav-item buttons
+        Assert.Equal(4, navButtons.Count);
     }
 
     [AvaloniaFact]
@@ -108,10 +108,10 @@ public class MainWindowUITests
         var window = new MainWindow { DataContext = vm };
         window.Show();
 
-        // ContentControl が正しい View を解決しているか
+        // ContentControl が正しい View を解決しているか（初期ページは ReadViewModel）
         var contentControl = window.GetVisualDescendants()
             .OfType<ContentControl>()
-            .FirstOrDefault(c => c.Content is LocalConvertViewModel);
+            .FirstOrDefault(c => c.Content is ReadViewModel);
 
         Assert.NotNull(contentControl);
     }

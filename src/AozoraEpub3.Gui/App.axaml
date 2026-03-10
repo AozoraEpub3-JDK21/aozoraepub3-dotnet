@@ -24,6 +24,9 @@
     DataType が一致するテンプレートの View が自動的に生成・配置される。
   -->
   <Application.DataTemplates>
+    <DataTemplate DataType="{x:Type vm:ReadViewModel}">
+      <views:ReadView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type vm:LocalConvertViewModel}">
       <views:LocalConvertView />
     </DataTemplate>
