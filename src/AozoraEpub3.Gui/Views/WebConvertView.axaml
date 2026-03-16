@@ -13,9 +13,22 @@
     <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,16">
       <TextBlock Text="{DynamicResource Str_Web_UrlLabel}"
                  FontSize="14" FontWeight="SemiBold" />
-      <TextBox Text="{Binding Url}"
-               Watermark="{DynamicResource Str_Web_UrlPlaceholder}"
-               FontSize="14" />
+      <Border x:Name="UrlDropZone"
+              BorderThickness="2" CornerRadius="6" Padding="0">
+        <Border.Styles>
+          <Style Selector="Border#UrlDropZone">
+            <Setter Property="BorderBrush" Value="Transparent" />
+          </Style>
+          <Style Selector="Border#UrlDropZone.drag-over">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+            <Setter Property="Background"  Value="{DynamicResource SystemControlHighlightListLowBrush}" />
+          </Style>
+        </Border.Styles>
+        <TextBox Text="{Binding Url}"
+                 Watermark="{DynamicResource Str_Web_UrlPlaceholder}"
+                 FontSize="14"
+                 DragDrop.AllowDrop="True" />
+      </Border>
     </StackPanel>
 
     <!-- ── Web 設定グループ ── -->

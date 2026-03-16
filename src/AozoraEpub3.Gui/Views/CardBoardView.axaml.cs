@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -15,8 +16,6 @@ public partial class CardBoardView : UserControl
 {
     private WebView2Host? _webView;
     private ScrollViewer? _textBoxScrollViewer;
-    private Point _dragStartPoint;
-    private bool _isDragging;
 
     public CardBoardView()
     {
@@ -26,99 +25,6 @@ public partial class CardBoardView : UserControl
         EditorTextBox.PropertyChanged += OnEditorTextBoxPropertyChanged;
         EditorTextBox.TextChanged += OnEditorTextBoxTextChanged;
         EditorTextBox.TemplateApplied += OnTextBoxTemplateApplied;
-
-        // ドラッグ＆ドロップ
-        CardListBox.AddHandler(DragDrop.DropEvent, OnCardDrop);
-        CardListBox.AddHandler(DragDrop.DragOverEvent, OnCardDragOver);
-        CardListBox.AddHandler(InputElement.PointerPressedEvent, OnCardPointerPressed, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        CardListBox.AddHandler(InputElement.PointerMovedEvent, OnCardPointerMoved, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        CardListBox.AddHandler(InputElement.PointerReleasedEvent, OnCardPointerReleased, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-    }
-
-    // ── ドラッグ＆ドロップ ─────────────────────────────────────────
-
-    private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.GetCurrentPoint(CardListBox).Properties.IsLeftButtonPressed)
-        {
-            _dragStartPoint = e.GetPosition(CardListBox);
-            _isDragging = false;
-        }
-    }
-
-    private async void OnCardPointerMoved(object? sender, PointerEventArgs e)
-    {
-        if (!e.GetCurrentPoint(CardListBox).Properties.IsLeftButtonPressed) return;
-        if (_isDragging) return;
-
-        var pos = e.GetPosition(CardListBox);
-        var diff = pos - _dragStartPoint;
-        if (Math.Abs(diff.Y) < 10) return; // しきい値
-
-        // ドラッグ元のカードを特定
-        if (DataContext is not CardBoardViewModel vm || vm.SelectedCard == null) return;
-
-        _isDragging = true;
-        var data = new DataObject();
-        data.Set("CardIndex", vm.Cards.IndexOf(vm.SelectedCard));
-        await DragDrop.DoDragDrop(e, data, DragDropEffects.Move);
-        _isDragging = false;
-    }
-
-    private void OnCardPointerReleased(object? sender, PointerReleasedEventArgs e)
-    {
-        _isDragging = false;
-    }
-
-    private void OnCardDragOver(object? sender, DragEventArgs e)
-    {
-#pragma warning disable CS0618 // DataObject uses legacy Data API
-        e.DragEffects = e.Data.Contains("CardIndex") ? DragDropEffects.Move : DragDropEffects.None;
-#pragma warning restore CS0618
-        e.Handled = true;
-    }
-
-    private void OnCardDrop(object? sender, DragEventArgs e)
-    {
-        if (DataContext is not CardBoardViewModel vm) return;
-#pragma warning disable CS0618
-        if (!e.Data.Contains("CardIndex")) return;
-        var sourceIndex = (int)e.Data.Get("CardIndex")!;
-#pragma warning restore CS0618
-
-        // ドロップ先のインデックスを計算
-        var pos = e.GetPosition(CardListBox);
-        var targetIndex = GetDropTargetIndex(pos);
-        if (targetIndex < 0) targetIndex = vm.Cards.Count - 1;
-        if (sourceIndex == targetIndex) return;
-
-        vm.Cards.Move(sourceIndex, targetIndex);
-        vm.SelectedCard = vm.Cards[targetIndex];
-        // バッキングストアを同期
-        vm.NotifyStatsChanged();
-
-        e.Handled = true;
-    }
-
-    private int GetDropTargetIndex(Point position)
-    {
-        if (DataContext is not CardBoardViewModel vm) return -1;
-
-        // ListBox 内の各アイテムの位置からドロップ先を判定
-        for (int i = 0; i < CardListBox.ItemCount; i++)
-        {
-            var container = CardListBox.ContainerFromIndex(i);
-            if (container is not Control ctrl) continue;
-
-            var bounds = ctrl.Bounds;
-            var itemPos = ctrl.TranslatePoint(new Point(0, 0), CardListBox);
-            if (itemPos == null) continue;
-
-            var midY = itemPos.Value.Y + bounds.Height / 2;
-            if (position.Y < midY) return i;
-        }
-
-        return vm.Cards.Count - 1;
     }
 
     // ── 行番号同期 ──────────────────────────────────────────────
@@ -142,10 +48,10 @@ public partial class CardBoardView : UserControl
     {
         if (_textBoxScrollViewer == null) return;
         var offset = _textBoxScrollViewer.Offset;
-        LineNumberBlock.Margin = new Thickness(0, -offset.Y + 4, 0, 0);
+        LineNumberBlock.Margin = new Avalonia.Thickness(0, -offset.Y + 4, 0, 0);
     }
 
-    private void OnEditorTextBoxPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    private void OnEditorTextBoxPropertyChanged(object? sender, Avalonia.AvaloniaPropertyChangedEventArgs e)
     {
         if (e.Property.Name == "Text")
             UpdateLineNumbers();
@@ -175,7 +81,6 @@ public partial class CardBoardView : UserControl
             vm.ThemeChanged += OnThemeChanged;
             ApplyTheme(vm.CurrentTheme);
 
-            // カード選択変更時にプレビューも更新 + PropertyChanged 経由のプレビュー更新
             vm.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName == nameof(CardBoardViewModel.SelectedCard))
@@ -223,9 +128,6 @@ public partial class CardBoardView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-
-        Dispatcher.UIThread.Post(() => EditorTextBox.Focus(),
-            DispatcherPriority.Loaded);
 
         if (!OperatingSystem.IsWindows()) return;
         if (_webView != null) return;
@@ -285,6 +187,13 @@ public partial class CardBoardView : UserControl
         base.OnKeyDown(e);
 
         if (DataContext is not CardBoardViewModel vm) return;
+
+        if (e.Key == Key.Escape && vm.IsEditorMode)
+        {
+            vm.BackToGalleryCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
 
         if (e.KeyModifiers == KeyModifiers.Control)
         {

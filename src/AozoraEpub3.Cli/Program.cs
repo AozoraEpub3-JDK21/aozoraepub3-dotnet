@@ -73,7 +73,7 @@ var webConfigOption = new Option<string>("--web-config")
 };
 var intervalOption = new Option<int>("--interval")
 {
-    DefaultValueFactory = _ => 1500,
+    DefaultValueFactory = _ => 700,
     Description = "URL変換時のダウンロード間隔 (ミリ秒)"
 };
 

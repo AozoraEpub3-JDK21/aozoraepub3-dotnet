@@ -27,6 +27,9 @@
     <DataTemplate DataType="{x:Type vm:ReadViewModel}">
       <views:ReadView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:WriteViewModel}">
+      <views:WriteView />
+    </DataTemplate>
     <DataTemplate DataType="{x:Type vm:LocalConvertViewModel}">
       <views:LocalConvertView />
     </DataTemplate>
