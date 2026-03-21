@@ -29,9 +29,13 @@ public partial class EditorView : UserControl
 
         EditorTextBox.PropertyChanged += OnEditorTextBoxPropertyChanged;
         EditorTextBox.TextChanged += OnEditorTextBoxTextChanged;
+        EditorTextBox.PropertyChanged += OnEditorTextBoxSelectionChanged;
 
         // スクロール同期のため ScrollViewer を取得
         EditorTextBox.TemplateApplied += OnTextBoxTemplateApplied;
+
+        // 検索ボックス Enter/Shift+Enter で前後検索
+        FindTextBox.KeyDown += OnFindTextBoxKeyDown;
     }
 
     // ── 行番号同期 ──────────────────────────────────────────────
@@ -64,6 +68,17 @@ public partial class EditorView : UserControl
             UpdateLineNumbers();
     }
 
+    private void OnEditorTextBoxSelectionChanged(object? sender, Avalonia.AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property.Name is not ("SelectionStart" or "SelectionEnd")) return;
+        if (DataContext is not EditorViewModel vm) return;
+
+        var start = EditorTextBox.SelectionStart;
+        var end   = EditorTextBox.SelectionEnd;
+        var len   = Math.Abs(end - start);
+        vm.SelectionInfo = len > 0 ? $"{len}字選択中" : "";
+    }
+
     private void OnEditorTextBoxTextChanged(object? sender, TextChangedEventArgs e)
     {
         UpdateLineNumbers();
@@ -88,6 +103,8 @@ public partial class EditorView : UserControl
             vm.OpenFileRequested += OnOpenFileRequested;
             vm.SaveFileRequested += OnSaveFileRequested;
             vm.ThemeChanged += OnThemeChanged;
+            vm.FindPanelOpened += OnFindPanelOpened;
+            vm.FindJumpRequested += OnFindJumpRequested;
             ApplyTheme(vm.CurrentTheme);
 
             // PropertyChanged 経由でもプレビューを更新（イベント到達漏れ対策）
@@ -97,6 +114,38 @@ public partial class EditorView : UserControl
                     OnPreviewUpdateRequested(vm.PreviewHtml);
             };
         }
+    }
+
+    private void OnFindPanelOpened()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            FindTextBox.Focus();
+            FindTextBox.SelectAll();
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void OnFindTextBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not EditorViewModel vm) return;
+        if (e.Key == Key.Enter)
+        {
+            if (e.KeyModifiers == KeyModifiers.Shift)
+                vm.FindPrevCommand.Execute(null);
+            else
+                vm.FindNextCommand.Execute(null);
+            e.Handled = true;
+        }
+    }
+
+    private void OnFindJumpRequested(int position, int length)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            EditorTextBox.SelectionStart = position;
+            EditorTextBox.SelectionEnd = position + length;
+            EditorTextBox.Focus();
+        });
     }
 
     private void OnThemeChanged(EditorTheme theme)
@@ -234,6 +283,14 @@ public partial class EditorView : UserControl
 
         if (DataContext is not EditorViewModel vm) return;
 
+        if (e.Key == Key.Escape && vm.IsFindReplaceVisible)
+        {
+            vm.CloseFindReplaceCommand.Execute(null);
+            EditorTextBox.Focus();
+            e.Handled = true;
+            return;
+        }
+
         if (e.KeyModifiers == KeyModifiers.Control)
         {
             switch (e.Key)
@@ -248,6 +305,10 @@ public partial class EditorView : UserControl
                     break;
                 case Key.S:
                     _ = vm.SaveFileCommand.ExecuteAsync(null);
+                    e.Handled = true;
+                    break;
+                case Key.F:
+                    vm.OpenFindReplaceCommand.Execute(null);
                     e.Handled = true;
                     break;
                 case Key.R:

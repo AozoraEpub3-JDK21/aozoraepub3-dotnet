@@ -1,3 +1,4 @@
+using Avalonia.Media;
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -88,6 +89,19 @@ public sealed partial class SettingsPageViewModel : ViewModelBase
     }
 
     // ───── フォント設定 ──────────────────────────────────────────────────────
+
+    /// <summary>システムフォント一覧（先頭は空文字 = テーマデフォルト）</summary>
+    public string[] AvailableFonts { get; } = BuildFontList();
+
+    private static string[] BuildFontList()
+    {
+        var systemFonts = FontManager.Current.SystemFonts
+            .Select(f => f.Name)
+            .OrderBy(n => n)
+            .Distinct()
+            .ToArray();
+        return ["", .. systemFonts];
+    }
 
     [ObservableProperty]
     private string _editorFontFamily = "";

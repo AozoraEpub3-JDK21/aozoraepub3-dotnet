@@ -37,6 +37,9 @@ public sealed partial class CardBoardViewModel : ViewModelBase
     private string _activeCardBody = "";
 
     [ObservableProperty]
+    private string _activeCardTitle = "";
+
+    [ObservableProperty]
     private string _previewHtml = "";
 
     [ObservableProperty]
@@ -47,6 +50,12 @@ public sealed partial class CardBoardViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isVertical = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEditorMode))]
+    private bool _isGalleryMode = true;
+
+    public bool IsEditorMode => !IsGalleryMode;
 
     // ───── 統計 ──────────────────────────────────────────────────────────
 
@@ -173,6 +182,14 @@ public sealed partial class CardBoardViewModel : ViewModelBase
 
     // ───── テキスト変更時のデバウンス処理 ─────────────────────────────────
 
+    partial void OnActiveCardTitleChanged(string value)
+    {
+        if (SelectedCard == null) return;
+        if (SelectedCard.Title == value) return;
+        SelectedCard.Title = value;
+        ScheduleSave();
+    }
+
     partial void OnActiveCardBodyChanged(string value)
     {
         if (SelectedCard == null) return;
@@ -271,6 +288,7 @@ public sealed partial class CardBoardViewModel : ViewModelBase
         OnPropertyChanged(nameof(TotalCards));
         OnPropertyChanged(nameof(StatsText));
         SelectCard(card);
+        IsGalleryMode = false;
         ScheduleSave();
         CheckMigrationTrigger();
     }
@@ -306,6 +324,20 @@ public sealed partial class CardBoardViewModel : ViewModelBase
     {
         SelectedCard = card;
         ActiveCardBody = card.Body;
+        ActiveCardTitle = card.Title;
+    }
+
+    [RelayCommand]
+    private void OpenCard(StoryCard card)
+    {
+        SelectCard(card);
+        IsGalleryMode = false;
+    }
+
+    [RelayCommand]
+    private void BackToGallery()
+    {
+        IsGalleryMode = true;
     }
 
     [RelayCommand]

@@ -37,6 +37,13 @@ public sealed partial class EditorViewModel : ViewModelBase
     [ObservableProperty]
     private int _lineCount;
 
+    /// <summary>原稿用紙換算（400字詰め）</summary>
+    public double ManuscriptPageCount => Math.Round(CharacterCount / 400.0, 1);
+
+    /// <summary>選択中の文字数（選択なしは空文字）</summary>
+    [ObservableProperty]
+    private string _selectionInfo = "";
+
     [ObservableProperty]
     private int _lintWarningCount;
 
@@ -45,6 +52,24 @@ public sealed partial class EditorViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isProofreadingPanelVisible;
+
+    // ───── 検索・置換 ─────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private bool _isFindReplaceVisible;
+
+    [ObservableProperty]
+    private string _findText = "";
+
+    [ObservableProperty]
+    private string _replaceText = "";
+
+    [ObservableProperty]
+    private string _findResultInfo = "";
+
+    /// <summary>検索ヒット位置リスト（開始インデックス）</summary>
+    private List<int> _findMatches = [];
+    private int _findMatchIndex = -1;
 
     [ObservableProperty]
     private ObservableCollection<LintWarning> _proofreadingResults = [];
@@ -210,6 +235,124 @@ public sealed partial class EditorViewModel : ViewModelBase
         OnEditorTextChanged(EditorText);
     }
 
+    // ───── 検索・置換コマンド ────────────────────────────────────────────────
+
+    /// <summary>検索パネル表示切替。View から SelectAll 等を行うためのイベント。</summary>
+    public event Action? FindPanelOpened;
+
+    [RelayCommand]
+    private void OpenFindReplace()
+    {
+        IsFindReplaceVisible = true;
+        FindPanelOpened?.Invoke();
+    }
+
+    [RelayCommand]
+    private void CloseFindReplace()
+    {
+        IsFindReplaceVisible = false;
+        FindResultInfo = "";
+        _findMatches.Clear();
+        _findMatchIndex = -1;
+    }
+
+    partial void OnFindTextChanged(string value) => RefreshMatches();
+
+    private void RefreshMatches()
+    {
+        _findMatches.Clear();
+        _findMatchIndex = -1;
+        if (string.IsNullOrEmpty(FindText))
+        {
+            FindResultInfo = "";
+            return;
+        }
+        var text = EditorText;
+        var idx = 0;
+        while (true)
+        {
+            idx = text.IndexOf(FindText, idx, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) break;
+            _findMatches.Add(idx);
+            idx += FindText.Length;
+        }
+        UpdateFindResultInfo();
+    }
+
+    private void UpdateFindResultInfo()
+    {
+        FindResultInfo = _findMatches.Count == 0
+            ? (string.IsNullOrEmpty(FindText) ? "" : "見つかりません")
+            : $"{(_findMatchIndex >= 0 ? _findMatchIndex + 1 : 1)}/{_findMatches.Count}";
+    }
+
+    /// <summary>検索ジャンプ要求（開始位置と長さ）。View 側がキャレット移動を行う。</summary>
+    public event Action<int, int>? FindJumpRequested;
+
+    [RelayCommand]
+    private void FindNext()
+    {
+        if (_findMatches.Count == 0) { RefreshMatches(); return; }
+        _findMatchIndex = (_findMatchIndex + 1) % _findMatches.Count;
+        UpdateFindResultInfo();
+        FindJumpRequested?.Invoke(_findMatches[_findMatchIndex], FindText.Length);
+    }
+
+    [RelayCommand]
+    private void FindPrev()
+    {
+        if (_findMatches.Count == 0) { RefreshMatches(); return; }
+        _findMatchIndex = (_findMatchIndex - 1 + _findMatches.Count) % _findMatches.Count;
+        UpdateFindResultInfo();
+        FindJumpRequested?.Invoke(_findMatches[_findMatchIndex], FindText.Length);
+    }
+
+    [RelayCommand]
+    private void Replace()
+    {
+        if (_findMatches.Count == 0 || _findMatchIndex < 0) { FindNext(); return; }
+        var pos = _findMatches[_findMatchIndex];
+        var text = EditorText;
+        EditorText = text[..pos] + ReplaceText + text[(pos + FindText.Length)..];
+        RefreshMatches();
+        if (_findMatches.Count > 0)
+        {
+            _findMatchIndex = Math.Min(_findMatchIndex, _findMatches.Count - 1);
+            UpdateFindResultInfo();
+            FindJumpRequested?.Invoke(_findMatches[_findMatchIndex], ReplaceText.Length);
+        }
+    }
+
+    [RelayCommand]
+    private void ReplaceAll()
+    {
+        if (string.IsNullOrEmpty(FindText)) return;
+        var count = 0;
+        var text = EditorText;
+        var sb = new System.Text.StringBuilder();
+        var idx = 0;
+        while (true)
+        {
+            var next = text.IndexOf(FindText, idx, StringComparison.OrdinalIgnoreCase);
+            if (next < 0) { sb.Append(text[idx..]); break; }
+            sb.Append(text[idx..next]);
+            sb.Append(ReplaceText);
+            idx = next + FindText.Length;
+            count++;
+        }
+        if (count > 0)
+        {
+            EditorText = sb.ToString();
+            FindResultInfo = $"{count}件置換しました";
+        }
+        else
+        {
+            FindResultInfo = "見つかりません";
+        }
+        _findMatches.Clear();
+        _findMatchIndex = -1;
+    }
+
     // ───── ファイル操作 ──────────────────────────────────────────────────────
 
     /// <summary>ファイルを開くダイアログ要求。View がハンドルする。</summary>
@@ -295,6 +438,11 @@ public sealed partial class EditorViewModel : ViewModelBase
 
     partial void OnCurrentFilePathChanged(string? value) => OnPropertyChanged(nameof(WindowTitle));
     partial void OnIsDirtyChanged(bool value) => OnPropertyChanged(nameof(WindowTitle));
+
+    partial void OnCharacterCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(ManuscriptPageCount));
+    }
 
     private ConversionProfile GetCurrentProfile() => SelectedModeIndex switch
     {

@@ -9,9 +9,16 @@
         MinWidth="800" MinHeight="560"
         WindowStartupLocation="CenterScreen">
 
+  <!--
+    ══════════════════════════════════════════════════════
+    Shell レイアウト
+    Row 0: ヘッダーバー（タイトル + 言語トグル）
+    Row 1: SplitView（サイドバー + メインコンテンツ）
+    ══════════════════════════════════════════════════════
+  -->
   <Grid RowDefinitions="Auto,*">
 
-    <!-- ヘッダー -->
+    <!-- ══════ Row 0: ヘッダー ══════ -->
     <Border Grid.Row="0"
             IsVisible="{Binding IsHeaderVisible}"
             Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
@@ -19,10 +26,14 @@
             BorderThickness="0,0,0,1"
             Padding="16,0">
       <Grid ColumnDefinitions="*,Auto" Height="48">
+
+        <!-- アプリタイトル -->
         <TextBlock Grid.Column="0"
                    Text="{DynamicResource Str_App_Title}"
                    FontSize="16" FontWeight="SemiBold"
                    VerticalAlignment="Center" />
+
+        <!-- 言語切り替えトグル -->
         <StackPanel Grid.Column="1" Orientation="Horizontal"
                     Spacing="4" VerticalAlignment="Center">
           <Button Content="{DynamicResource Str_Lang_Ja}"
@@ -36,10 +47,11 @@
                   Classes.accent="{Binding !IsJapanese}"
                   Padding="10,4" />
         </StackPanel>
+
       </Grid>
     </Border>
 
-    <!-- SplitView（サイドバー + コンテンツ） -->
+    <!-- ══════ Row 1: SplitView（サイドバー + コンテンツ）══════ -->
     <SplitView Grid.Row="1"
                IsPaneOpen="{Binding IsSidebarVisible}"
                DisplayMode="CompactInline"
@@ -48,6 +60,7 @@
                OpenPaneLength="180"
                CompactPaneLength="0">
 
+      <!-- ── サイドバー ── -->
       <SplitView.Pane>
         <Grid RowDefinitions="*,Auto">
 
@@ -98,7 +111,7 @@
 
           </StackPanel>
 
-          <!-- 下部固定：設定 -->
+          <!-- 下部固定: 設定 -->
           <StackPanel Grid.Row="1" Margin="0,0,0,12">
             <Button Command="{Binding NavigateToCommand}"
                     CommandParameter="settings"
@@ -118,6 +131,7 @@
         </Grid>
       </SplitView.Pane>
 
+      <!-- ── メインコンテンツ（SPA ContentControl）── -->
       <SplitView.Content>
         <ContentControl Content="{Binding CurrentPage}"
                         HorizontalContentAlignment="Stretch"
@@ -127,7 +141,10 @@
     </SplitView>
   </Grid>
 
+  <!-- ══════ スタイル定義 ══════ -->
   <Window.Styles>
+
+    <!-- ナビゲーションボタン共通スタイル -->
     <Style Selector="Button.nav-item">
       <Setter Property="Background"      Value="Transparent" />
       <Setter Property="BorderThickness"  Value="0" />
@@ -141,6 +158,8 @@
       <Setter Property="Background"
               Value="{DynamicResource SystemControlHighlightListLowBrush}" />
     </Style>
+
+    <!-- 選択中のナビゲーションアイテム -->
     <Style Selector="Button.nav-item.active">
       <Setter Property="Background"
               Value="{DynamicResource SystemControlHighlightListMediumBrush}" />
@@ -153,9 +172,12 @@
       <Setter Property="Background"
               Value="{DynamicResource SystemControlHighlightListAccentLowBrush}" />
     </Style>
+
+    <!-- accent クラス: 選択中の言語ボタン強調 -->
     <Style Selector="Button.accent">
       <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
     </Style>
+
   </Window.Styles>
 
 </Window>

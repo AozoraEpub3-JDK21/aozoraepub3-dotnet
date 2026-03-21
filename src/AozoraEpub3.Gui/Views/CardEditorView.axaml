@@ -8,43 +8,77 @@
   <Grid RowDefinitions="Auto,*,Auto">
 
     <!-- ══════ Row 0: ToolBar ══════ -->
-    <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-      <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,4">
-        <Button Content="新規" Command="{Binding NewProjectCommand}" Padding="4,2" FontSize="12"/>
-        <Button Content="開く" Command="{Binding OpenProjectCommand}" Padding="4,2" FontSize="12"/>
-        <Button Content="保存" Command="{Binding SaveProjectCommand}" Padding="4,2" FontSize="12"/>
-        <Separator/>
-        <Button Content="+ 話" Command="{Binding AddEpisodeCommand}"
-                ToolTip.Tip="新しいエピソードを追加" Padding="4,2" FontSize="12"/>
-        <Button Content="+ 章" Command="{Binding AddChapterCommand}"
-                ToolTip.Tip="新しい章を追加" Padding="4,2" FontSize="12"/>
-        <Button Content="+ メモ" Command="{Binding AddMemoCommand}"
-                ToolTip.Tip="フリーカード（EPUBに含まれない）" Padding="4,2" FontSize="12"/>
-        <Separator/>
-        <ComboBox ItemsSource="{Binding ModeNames}"
+    <Border Grid.Row="0"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="4,4">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+
+        <!-- ≡ ファイル・ツールメニュー -->
+        <Button Grid.Column="0"
+                Content="≡" Padding="8,4" FontSize="14"
+                ToolTip.Tip="ファイル操作・構造">
+          <Button.Flyout>
+            <MenuFlyout>
+              <MenuItem Header="新規プロジェクト" Command="{Binding NewProjectCommand}" />
+              <MenuItem Header="開く"             Command="{Binding OpenProjectCommand}" />
+              <MenuItem Header="保存"             Command="{Binding SaveProjectCommand}" />
+              <Separator/>
+              <MenuItem Header="+ 話を追加"  Command="{Binding AddEpisodeCommand}" />
+              <MenuItem Header="+ 章を追加"  Command="{Binding AddChapterCommand}" />
+              <MenuItem Header="+ メモを追加" Command="{Binding AddMemoCommand}" />
+              <Separator/>
+              <MenuItem Header="EPUB変換"    Command="{Binding ConvertToEpubCommand}" />
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+
+        <Border Grid.Column="1" Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                Margin="4,4" VerticalAlignment="Stretch"/>
+
+        <!-- モード -->
+        <ComboBox Grid.Column="2"
+                  ItemsSource="{Binding ModeNames}"
                   SelectedIndex="{Binding SelectedModeIndex}"
-                  Width="75" FontSize="12" VerticalAlignment="Center"/>
-        <Separator/>
-        <Button Content="ルビ" Command="{Binding InsertSnippetCommand}" CommandParameter="ruby"
-                ToolTip.Tip="Ctrl+R" Padding="4,2" FontSize="12"/>
-        <Button Content="傍点" Command="{Binding InsertSnippetCommand}" CommandParameter="emphasis"
-                ToolTip.Tip="Ctrl+E" Padding="4,2" FontSize="12"/>
-        <Button Content="太字" Command="{Binding InsertSnippetCommand}" CommandParameter="bold"
-                ToolTip.Tip="Ctrl+B" Padding="4,2" FontSize="12"/>
-        <Separator/>
-        <ToggleButton Content="縦書" IsChecked="{Binding IsVertical}" Padding="4,2" FontSize="12"/>
-        <Button Content="整形" Command="{Binding FormatTextCommand}" Padding="4,2" FontSize="12"/>
-        <Separator/>
-        <ToggleButton Content="Preview" IsChecked="{Binding IsPreviewVisible}"
-                      ToolTip.Tip="F5" Padding="4,2" FontSize="12"/>
-        <Separator/>
-        <Button Content="EPUB変換" Command="{Binding ConvertToEpubCommand}"
-                Padding="4,2" FontSize="12" FontWeight="SemiBold"/>
-        <Separator/>
-        <ToggleButton Content="？" IsChecked="{Binding CheatSheet.IsVisible}"
-                      ToolTip.Tip="F1" Padding="4,2" FontSize="12"/>
-      </StackPanel>
-    </ScrollViewer>
+                  Width="75" FontSize="12" VerticalAlignment="Center"
+                  Margin="4,0" HorizontalAlignment="Left"/>
+
+        <!-- 記法・書式ボタン -->
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2">
+          <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                  Margin="2,4" VerticalAlignment="Stretch"/>
+          <Button Content="ルビ"   Command="{Binding InsertSnippetCommand}" CommandParameter="ruby"
+                  ToolTip.Tip="Ctrl+R" Padding="4,2" FontSize="12"/>
+          <Button Content="傍点"   Command="{Binding InsertSnippetCommand}" CommandParameter="emphasis"
+                  ToolTip.Tip="Ctrl+E" Padding="4,2" FontSize="12"/>
+          <Button Content="太字"   Command="{Binding InsertSnippetCommand}" CommandParameter="bold"
+                  ToolTip.Tip="Ctrl+B" Padding="4,2" FontSize="12"/>
+          <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                  Margin="2,4" VerticalAlignment="Stretch"/>
+          <ToggleButton Content="縦書" IsChecked="{Binding IsVertical}" Padding="4,2" FontSize="12"/>
+          <Button Content="自動修正" Command="{Binding FormatTextCommand}"
+                  ToolTip.Tip="……・──など自動補正 (Ctrl+Shift+F)" Padding="4,2" FontSize="12"/>
+        </StackPanel>
+
+        <!-- アクションボタン -->
+        <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2">
+          <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                  Margin="2,4" VerticalAlignment="Stretch"/>
+          <ToggleButton Content="縦書確認" IsChecked="{Binding IsPreviewVisible}"
+                        ToolTip.Tip="F5" Padding="4,2" FontSize="12"/>
+          <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                  Margin="2,4" VerticalAlignment="Stretch"/>
+          <Button Content="EPUB変換" Command="{Binding ConvertToEpubCommand}"
+                  Padding="4,2" FontSize="12" FontWeight="SemiBold"/>
+          <Border Width="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                  Margin="2,4" VerticalAlignment="Stretch"/>
+          <ToggleButton Content="？" IsChecked="{Binding CheatSheet.IsVisible}"
+                        ToolTip.Tip="F1" Padding="4,2" FontSize="12"/>
+        </StackPanel>
+
+      </Grid>
+    </Border>
 
     <!-- ══════ Row 1: カードリスト + エディタ + プレビュー + チートシート ══════ -->
     <Grid Grid.Row="1" ColumnDefinitions="*,Auto">

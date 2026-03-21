@@ -42,11 +42,12 @@ public class PreviewUITests
         window.Show();
 
         // NavigateToCards は NavigateToCardsRequested イベントを発火
-        // MainWindowViewModel がそれを受けて cards に遷移する
+        // MainWindowViewModel がそれを受けて WriteViewModel（cards モード）に遷移する
         mainVm.NavigateToCommand.Execute("preview");
         mainVm.PreviewVm.NavigateToCardsCommand.Execute(null);
 
-        Assert.IsType<CardBoardViewModel>(mainVm.CurrentPage);
+        Assert.IsType<WriteViewModel>(mainVm.CurrentPage);
+        Assert.True(((WriteViewModel)mainVm.CurrentPage).IsCardMode);
     }
 
     [AvaloniaFact]
