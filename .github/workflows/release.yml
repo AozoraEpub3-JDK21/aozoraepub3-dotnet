@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install WiX toolset
+        run: |
+          dotnet tool install -g wix --version 5.0.2
+          wix extension add WixToolset.UI.wixext/5.0.2 --global
+        shell: pwsh
+
+      - name: Build MSI installer
+        run: |
+          ./installer/build.ps1 -Version ${{ steps.version.outputs.VERSION }}
+        shell: pwsh
+        env:
+          # GitHub Actions では PATH に dotnet global tools が自動追加される
+          PATH: "${{ env.PATH }};${{ env.USERPROFILE }}\\.dotnet\\tools"
+
+      - name: Create ZIP archive
+        run: |
+          Compress-Archive `
+            -Path publish/* `
+            -DestinationPath "AozoraEpub3-${{ steps.version.outputs.VERSION }}-win-x64.zip"
+        shell: pwsh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "AozoraEpub3 v${{ steps.version.outputs.VERSION }}"
+          draft: true
+          generate_release_notes: true
+          files: |
+            AozoraEpub3-${{ steps.version.outputs.VERSION }}-win-x64.msi
+            AozoraEpub3-${{ steps.version.outputs.VERSION }}-win-x64.zip

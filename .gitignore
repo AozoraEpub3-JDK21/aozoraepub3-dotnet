@@ -500,3 +500,11 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# WiX 自動生成ファイル
+installer/AppFiles.wxs
+
+# WiX ビルド成果物
+*.wixpdb
+AozoraEpub3-*.msi
+AozoraEpub3-*.zip
