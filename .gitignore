@@ -8,6 +8,11 @@
 .claude/
 _patch_review*.py
 
+# 内部資料（非公開）
+docs/
+aozoraepub3-dotnet-*.md
+CLAUDE.md
+
 # ビルド成果物
 dist/
 *.zip
