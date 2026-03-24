@@ -664,13 +664,15 @@ public class Epub3Writer : IEpub3Writer
                     using var archive = RarArchive.OpenArchive(new FileInfo(srcFile), null);
                     foreach (var entry in archive.Entries.Where(e => !e.IsDirectory))
                     {
-                        string entryName = SanitizeArchiveEntryName(entry.Key!.Replace('\\', '/'));
-                        string srcImageFileName = entryName[archivePathLength..];
-                        if (outImageFileNames.Contains(srcImageFileName))
-                        {
-                            using var is2 = entry.OpenEntryStream();
-                            WriteArchiveImage(srcImageFileName, is2);
-                        }
+                        // ホワイトリスト確認を先に行い、想定外エントリのストリームを開かない
+                        string rawName = entry.Key!.Replace('\\', '/');
+                        if (rawName.Length <= archivePathLength) continue;
+                        string srcImageFileName = rawName[archivePathLength..];
+                        if (!outImageFileNames.Contains(srcImageFileName)) continue;
+                        // ホワイトリスト通過済み: パス検証を実施
+                        SanitizeArchiveEntryName(rawName); // 不正パスなら ArgumentException
+                        using var is2 = entry.OpenEntryStream();
+                        WriteArchiveImage(srcImageFileName, is2);
                     }
                 }
                 else
@@ -685,13 +687,15 @@ public class Epub3Writer : IEpub3Writer
                     {
                         try
                         {
-                            string entryName = SanitizeArchiveEntryName(entry.FullName.Replace('\\', '/'));
-                            string srcImageFileName = entryName[archivePathLength..];
-                            if (outImageFileNames.Contains(srcImageFileName))
-                            {
-                                using var is2 = entry.Open();
-                                WriteArchiveImage(srcImageFileName, is2);
-                            }
+                            // ホワイトリスト確認を先に行い、想定外エントリのストリームを開かない
+                            string rawName = entry.FullName.Replace('\\', '/');
+                            if (rawName.Length <= archivePathLength) continue;
+                            string srcImageFileName = rawName[archivePathLength..];
+                            if (!outImageFileNames.Contains(srcImageFileName)) continue;
+                            // ホワイトリスト通過済み: パス検証を実施
+                            SanitizeArchiveEntryName(rawName); // 不正パスなら ArgumentException
+                            using var is2 = entry.Open();
+                            WriteArchiveImage(srcImageFileName, is2);
                         }
                         catch (ArgumentException e)
                         {
