@@ -5,26 +5,51 @@ using AozoraEpub3.Gui.Services;
 
 namespace AozoraEpub3.Gui.ViewModels;
 
+/// <summary>
+/// Shell（メインウィンドウ）の ViewModel。
+/// サイドバーのナビゲーションと SPA ルーティングを担当する。
+/// 起動時に設定を読み込み、終了時に保存する。
+/// </summary>
 public sealed partial class MainWindowViewModel : ViewModelBase
 {
-    // ── 子 ViewModel ──────────────────────────────────────────────────────
-    public ReadViewModel       ReadVm      { get; } = new();
-    public EditorViewModel     EditorVm    { get; } = new();
-    public CardBoardViewModel  CardBoardVm { get; } = new();
+    // ───── 子 ViewModel ─────────────────────────────────────────────────────
+
+    /// <summary>層1「読む」コンテナ（URL変換 + ファイル変換）</summary>
+    public ReadViewModel ReadVm { get; } = new();
+
+    /// <summary>層2「書く」— フルテキストエディタ</summary>
+    public EditorViewModel EditorVm { get; } = new();
+
+    /// <summary>層2「書く」— カード執筆ボード</summary>
+    public CardBoardViewModel CardBoardVm { get; } = new();
+
+    /// <summary>層2「書く」コンテナ（カードボード + エディタ）</summary>
+    public WriteViewModel WriteVm { get; }
+
+    /// <summary>層3「本にする」— ブックエディタ</summary>
     public CardEditorViewModel CardEditorVm { get; } = new();
+
     public SettingsPageViewModel SettingsVm { get; } = new();
-    public PreviewViewModel    PreviewVm   { get; } = new();
-    public ValidateViewModel   ValidateVm  { get; } = new();
+    public PreviewViewModel PreviewVm { get; } = new();
+    public ValidateViewModel ValidateVm { get; } = new();
 
     // 後方互換アクセサ
     public LocalConvertViewModel LocalConvertVm => ReadVm.LocalConvertVm;
     public WebConvertViewModel   WebConvertVm   => ReadVm.WebConvertVm;
 
-    // ── SPA ルーティング ──────────────────────────────────────────────────
+    // ───── SPA ルーティング ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// ContentControl にバインドする「現在のページ ViewModel」。
+    /// App.axaml に登録した DataTemplate が対応する View を自動解決する。
+    /// </summary>
     [ObservableProperty]
     private ViewModelBase _currentPage;
 
-    /// <summary>サイドバー選択状態：read / write / publish / settings</summary>
+    /// <summary>
+    /// サイドバーのどのページが選択中かを示す ID。
+    /// "read" / "write" / "publish" / "settings"
+    /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsReadPage))]
     [NotifyPropertyChangedFor(nameof(IsWritePage))]
@@ -39,21 +64,30 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
+        WriteVm = new WriteViewModel(CardBoardVm, EditorVm);
         _currentPage = ReadVm;
 
+        // 層1 → プレビューへ自動遷移
         ReadVm.OnConversionCompleted = OpenPreview;
+        ReadVm.OpenPreviewRequested += () => NavigateTo("preview");
 
-        PreviewVm.ToggleMaximizeRequested  += () => IsPreviewMaximized = !IsPreviewMaximized;
-        PreviewVm.ValidateRequested        += OnValidateRequested;
+        // プレビュー連携
+        PreviewVm.ToggleMaximizeRequested += () => IsPreviewMaximized = !IsPreviewMaximized;
+        PreviewVm.ValidateRequested       += OnValidateRequested;
         PreviewVm.NavigateToCardsRequested += () => NavigateTo("cards");
 
+        // 検証連携
         ValidateVm.JumpToFileRequested += OnJumpToFile;
 
+        // カードボード連携
         CardBoardVm.EpubConversionRequested   += OnCardEpubConversion;
         CardBoardVm.MigrateToProjectRequested += OnMigrateToProject;
-        CardEditorVm.EpubConversionRequested  += OnCardEpubConversion;
-        EditorVm.EpubConversionRequested      += OnCardEpubConversion;
 
+        // カードエディタ・フルエディタ連携
+        CardEditorVm.EpubConversionRequested += OnCardEpubConversion;
+        EditorVm.EpubConversionRequested     += OnCardEpubConversion;
+
+        // 設定連携
         SettingsVm.EditorThemeSelectionChanged += OnEditorThemeChanged;
         SettingsVm.FontSettingsChanged         += OnFontSettingsChanged;
 
@@ -63,31 +97,37 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateTo(string page)
     {
-        if (IsPreviewMaximized) IsPreviewMaximized = false;
+        // ページ遷移時にプレビュー最大化を解除
+        if (IsPreviewMaximized)
+            IsPreviewMaximized = false;
 
+        // サイドバーの選択状態を更新（内部遷移では変えない）
         CurrentPageId = page switch
         {
-            "read" or "local" or "web" => "read",
-            "write" or "editor"        => "write",
-            "cards"                    => "write",
-            "publish" or "project"     => "publish",
-            "settings"                 => "settings",
-            _ => CurrentPageId   // preview / validate は内部遷移
+            "read" or "local" or "web"          => "read",
+            "write" or "editor" or "cards"      => "write",
+            "publish" or "project"              => "publish",
+            "settings"                          => "settings",
+            // preview / validate は内部遷移なので現在の選択を維持
+            _                                   => CurrentPageId
         };
 
-        if (page == "web")   ReadVm.IsUrlMode = true;
-        if (page == "local") ReadVm.IsUrlMode = false;
+        // URL/ファイルモードのサブ切り替え
+        if (page == "web")     ReadVm.IsUrlMode   = true;
+        if (page == "local")   ReadVm.IsUrlMode   = false;
+        if (page == "editor")  WriteVm.IsCardMode = false;
+        if (page == "cards")   WriteVm.IsCardMode = true;
 
+        // ページ遷移
         CurrentPage = page switch
         {
-            "read" or "web" or "local" => ReadVm,
-            "write" or "editor"        => EditorVm,
-            "cards"                    => CardBoardVm,
-            "publish" or "project"     => CardEditorVm,
-            "settings"                 => SettingsVm,
-            "preview"                  => PreviewVm,
-            "validate"                 => ValidateVm,
-            _                          => ReadVm
+            "read" or "web" or "local"          => ReadVm,
+            "write" or "editor" or "cards"      => WriteVm,
+            "publish" or "project"              => CardEditorVm,
+            "settings"                          => SettingsVm,
+            "preview"                           => PreviewVm,
+            "validate"                          => ValidateVm,
+            _                                   => ReadVm
         };
     }
 
@@ -149,6 +189,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             "AozoraEpub3", "projects");
         Directory.CreateDirectory(appDataDir);
         var projectDir = projectService.ImportFromCardCollection(appDataDir, collection);
+
+        // CardEditorViewModel にプロジェクトを読み込ませる → 層3へ
         CardEditorVm.LoadProject(projectDir);
         CurrentPage   = CardEditorVm;
         CurrentPageId = "publish";
@@ -156,6 +198,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private void OnCardEpubConversion(string tempTextPath)
     {
+        // カードモードからのEPUB変換: テキストファイルをローカル変換に渡して「読む」へ
         ReadVm.LocalConvertVm.AddFilePaths([tempTextPath]);
         ReadVm.IsUrlMode = false;
         CurrentPage   = ReadVm;
@@ -165,7 +208,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void OnEditorThemeChanged(EditorTheme theme)
     {
         EditorVm.CurrentTheme    = theme;
-        CardBoardVm.CurrentTheme  = theme;
+        CardBoardVm.CurrentTheme = theme;
         CardEditorVm.CurrentTheme = theme;
     }
 
@@ -202,7 +245,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             SettingsVm.SetEditorThemeById(s.EditorThemeId);
             var theme = EditorThemes.GetById(s.EditorThemeId);
             EditorVm.CurrentTheme    = theme;
-            CardBoardVm.CurrentTheme  = theme;
+            CardBoardVm.CurrentTheme = theme;
             CardEditorVm.CurrentTheme = theme;
         }
         CardBoardVm.SuppressMigrationProposals = s.SuppressMigrationProposals;
@@ -227,6 +270,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         s.EditorFontSize    = SettingsVm.EditorFontSize;
         s.PreviewFontFamily = SettingsVm.PreviewFontFamily;
         s.PreviewFontSize   = SettingsVm.PreviewFontSize;
+
+        // マイグレーション提案
         s.SuppressMigrationProposals = CardBoardVm.SuppressMigrationProposals;
         AppSettingsStorage.Save(s);
     }
