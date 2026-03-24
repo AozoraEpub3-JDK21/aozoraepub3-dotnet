@@ -84,6 +84,41 @@ dotnet run --project src/AozoraEpub3.Cli -- --url https://ncode.syosetu.com/nXXX
 dotnet run --project src/AozoraEpub3.Gui
 ```
 
+### MSIインストーラーのビルド
+
+Windows向けのMSIインストーラーを作成できます。
+
+**必要ツール:**
+
+```powershell
+# WiX Toolset (初回のみ)
+dotnet tool install -g wix --version 5.0.2
+wix extension add WixToolset.UI.wixext/5.0.2 --global
+```
+
+**ビルド実行:**
+
+```powershell
+./installer/build.ps1 -Version 0.0.1
+```
+
+実行後、リポジトリルートに `AozoraEpub3-0.0.1-win-x64.msi` が生成されます。
+
+| オプション | 説明 |
+|-----------|------|
+| `-Version 0.0.1` | バージョン番号 |
+| `-SkipPublish` | `dotnet publish` をスキップして既存の `publish/` を使用 |
+| `-Configuration Debug` | Debugビルド（デフォルト: Release） |
+
+**GitHub Actions による自動ビルド:**
+
+`v0.0.1` のようなタグをプッシュすると、MSI + ZIP を生成して GitHub Release (draft) を自動作成します。
+
+```bash
+git tag v0.0.1
+git push origin v0.0.1
+```
+
 ---
 
 ## プロジェクト構成
