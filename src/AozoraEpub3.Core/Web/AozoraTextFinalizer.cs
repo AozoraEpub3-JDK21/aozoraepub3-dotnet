@@ -266,20 +266,30 @@ public class AozoraTextFinalizer
     {
         // narou.rb: "\n\n" → "\n" then "(^\n){3}" → "\n\n"
         // 結果: 単一空行は除去、2連続空行は1つに
-        int consecutive = 0;
-        for (int i = lines.Count - 1; i >= 0; i--)
+        var result = new List<string>(lines.Count);
+        int i = 0;
+        while (i < lines.Count)
         {
             if (lines[i].Length == 0)
             {
-                consecutive++;
-                if (consecutive > 1)
-                    lines.RemoveAt(i + 1); // 2つ目以降の連続空行を削除
+                int count = 0;
+                while (i < lines.Count && lines[i].Length == 0)
+                {
+                    count++;
+                    i++;
+                }
+                // 単一空行: 除去、2連続以上: 1行に圧縮
+                if (count > 1)
+                    result.Add("");
             }
             else
             {
-                consecutive = 0;
+                result.Add(lines[i]);
+                i++;
             }
         }
+        lines.Clear();
+        lines.AddRange(result);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -323,11 +333,19 @@ public class AozoraTextFinalizer
             if (line.Length == 0) continue;
             if (ShouldSkipConversion(line)) continue; // URL行・変換日時行スキップ
 
-            // サブタイトル行（中見出し・大見出し）は全角数字変換のみ
+            // サブタイトル行（中見出し・大見出し）は縦中横または全角数字変換のみ
+            // 2桁以上: ［＃縦中横］...［＃縦中横終わり］で囲む（縦書き時に横組み表示）
+            // 1桁: 全角数字に変換
             if (line.Contains("［＃中見出し］") || line.Contains("［＃大見出し］"))
             {
                 lines[i] = TransformOutsideAnnotations(line, s =>
-                    NumToKanjiRegex.Replace(s, m => HankakuToZenkaku(m.Value)));
+                    SubtitleDigitRegex.Replace(s, m =>
+                    {
+                        string digits = NormalizeDigits(m.Value); // 全角数字も半角に統一
+                        if (digits.Length >= 2)
+                            return $"［＃縦中横］{digits}［＃縦中横終わり］";
+                        return HankakuToZenkaku(digits);
+                    }));
                 continue;
             }
 
@@ -345,6 +363,7 @@ public class AozoraTextFinalizer
     }
 
     private static readonly Regex NumToKanjiRegex = new(@"[\d０-９,，]+", RegexOptions.Compiled);
+    private static readonly Regex SubtitleDigitRegex = new(@"[\d０-９]+", RegexOptions.Compiled);
 
     /// <summary>全角数字を半角に正規化</summary>
     private static string NormalizeDigits(string s)

@@ -30,7 +30,7 @@ public class AozoraTextFinalizerTests
         return new AozoraTextFinalizer(settings);
     }
 
-    // ── Fix 1: サブタイトル行の漢数字変換スキップ ──
+    // ── Fix 1: サブタイトル行の漢数字変換スキップ + 縦中横 ──
 
     [Fact]
     public void ConvertNumToKanji_SubtitleLine_UsesZenkakuOnly()
@@ -43,8 +43,8 @@ public class AozoraTextFinalizerTests
         };
         finalizer.Finalize(lines);
 
-        // サブタイトル行: 100 → 全角 １００ (漢数字にしない)
-        Assert.Contains("第１００話", lines[0], StringComparison.Ordinal);
+        // サブタイトル行: 2桁以上 → 縦中横注記で囲む (漢数字にしない)
+        Assert.Contains("第［＃縦中横］100［＃縦中横終わり］話", lines[0], StringComparison.Ordinal);
         Assert.DoesNotContain("一〇〇", lines[0], StringComparison.Ordinal);
 
         // 本文行: 100 → 漢数字 一〇〇
@@ -61,6 +61,7 @@ public class AozoraTextFinalizerTests
         };
         finalizer.Finalize(lines);
 
+        // 1桁: 全角数字に変換 (縦中横不要)
         Assert.Contains("第５章", lines[0], StringComparison.Ordinal);
         Assert.DoesNotContain("五", lines[0], StringComparison.Ordinal);
     }
@@ -140,7 +141,60 @@ public class AozoraTextFinalizerTests
         Assert.Contains("n8005ls", lines[0]);
     }
 
-    // ── Fix 3: 読了表示が1箇所のみ ──
+    // ── Fix 3: PackBlankLine ──
+
+    private static AozoraTextFinalizer CreatePackBlankLineFinalizer() =>
+        new(new NarouFormatSettings
+        {
+            EnablePackBlankLine = true,
+            EnableConvertNumToKanji = false,
+            EnableAuthorComments = false,
+            EnableAutoIndent = false,
+            EnableHalfIndentBracket = false,
+            EnableEnchantMidashi = false,
+            EnableInspectInvalidOpenCloseBrackets = false,
+            EnableDisplayEndOfBook = false,
+        });
+
+    [Fact]
+    public void PackBlankLine_SingleBlank_IsRemoved()
+    {
+        var finalizer = CreatePackBlankLineFinalizer();
+        var lines = new List<string> { "段落一", "", "段落二" };
+        finalizer.Finalize(lines);
+
+        // 単一空行は除去
+        Assert.Equal(2, lines.Count);
+        Assert.Equal("段落一", lines[0]);
+        Assert.Equal("段落二", lines[1]);
+    }
+
+    [Fact]
+    public void PackBlankLine_DoubleBlank_CompressedToOne()
+    {
+        var finalizer = CreatePackBlankLineFinalizer();
+        var lines = new List<string> { "段落一", "", "", "段落二" };
+        finalizer.Finalize(lines);
+
+        // 2連続空行は1行に
+        Assert.Equal(3, lines.Count);
+        Assert.Equal("段落一", lines[0]);
+        Assert.Equal("", lines[1]);
+        Assert.Equal("段落二", lines[2]);
+    }
+
+    [Fact]
+    public void PackBlankLine_TripleBlank_CompressedToOne()
+    {
+        var finalizer = CreatePackBlankLineFinalizer();
+        var lines = new List<string> { "段落一", "", "", "", "段落二" };
+        finalizer.Finalize(lines);
+
+        Assert.Equal(3, lines.Count);
+        Assert.Equal("", lines[1]);
+    }
+
+    // ── Fix 5: 読了表示が1箇所のみ ──
 
     [Fact]
     public void Finalize_EndOfBook_AddedOnce()
