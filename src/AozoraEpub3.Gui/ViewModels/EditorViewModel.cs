@@ -361,13 +361,20 @@ public sealed partial class EditorViewModel : ViewModelBase
     /// <summary>名前を付けて保存ダイアログ要求。View がハンドルする。</summary>
     public event Func<string?, Task<string?>>? SaveFileRequested;
 
-    [RelayCommand]
-    private void NewFile()
+    /// <summary>未保存変更の破棄確認要求。trueで続行、falseでキャンセル。</summary>
+    public event Func<Task<bool>>? ConfirmDiscardChangesRequested;
+
+    private async Task<bool> ConfirmDiscardChangesAsync()
     {
-        if (IsDirty)
-        {
-            // TODO: 未保存確認ダイアログ
-        }
+        if (!IsDirty) return true;
+        if (ConfirmDiscardChangesRequested == null) return true;
+        return await ConfirmDiscardChangesRequested.Invoke();
+    }
+
+    [RelayCommand]
+    private async Task NewFile()
+    {
+        if (!await ConfirmDiscardChangesAsync()) return;
         EditorText = "";
         CurrentFilePath = null;
         IsDirty = false;
@@ -376,6 +383,7 @@ public sealed partial class EditorViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenFile()
     {
+        if (!await ConfirmDiscardChangesAsync()) return;
         if (OpenFileRequested == null) return;
         var path = await OpenFileRequested.Invoke();
         if (path == null) return;

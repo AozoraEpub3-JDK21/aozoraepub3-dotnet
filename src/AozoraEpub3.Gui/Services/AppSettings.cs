@@ -104,7 +104,7 @@ public sealed class GuiSettings
 /// </summary>
 public static class AppSettingsStorage
 {
-    private static readonly string FilePath = Path.Combine(
+    private static string DefaultFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "AozoraEpub3", "settings.json");
 
@@ -114,28 +114,52 @@ public static class AppSettingsStorage
         DefaultIgnoreCondition = JsonIgnoreCondition.Never
     };
 
-    public static GuiSettings Load()
+    /// <summary>設定読み込み失敗時に通知される（メッセージ）。</summary>
+    public static event Action<string>? LoadFailed;
+
+    /// <summary>設定保存失敗時に通知される（メッセージ）。</summary>
+    public static event Action<string>? SaveFailed;
+
+    public static GuiSettings Load() => Load(null);
+
+    public static GuiSettings Load(string? filePath)
     {
+        var path = string.IsNullOrWhiteSpace(filePath) ? DefaultFilePath : filePath;
         try
         {
-            if (File.Exists(FilePath))
+            if (File.Exists(path))
             {
-                var json = File.ReadAllText(FilePath);
+                var json = File.ReadAllText(path);
                 return JsonSerializer.Deserialize<GuiSettings>(json, _jsonOptions) ?? new();
             }
         }
-        catch { /* 破損ファイルは無視してデフォルト値を使う */ }
+        catch (Exception ex)
+        {
+            var message = $"設定読込に失敗しました: {ex.Message}";
+            LoadFailed?.Invoke(message);
+            System.Diagnostics.Debug.WriteLine(message);
+        }
         return new();
     }
 
-    public static void Save(GuiSettings settings)
+    public static bool Save(GuiSettings settings) => Save(settings, null);
+
+    public static bool Save(GuiSettings settings, string? filePath)
     {
+        var path = string.IsNullOrWhiteSpace(filePath) ? DefaultFilePath : filePath;
         try
         {
-            var dir = Path.GetDirectoryName(FilePath)!;
+            var dir = Path.GetDirectoryName(path)!;
             Directory.CreateDirectory(dir);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(settings, _jsonOptions));
+            File.WriteAllText(path, JsonSerializer.Serialize(settings, _jsonOptions));
+            return true;
         }
-        catch { /* 保存失敗は無視 */ }
+        catch (Exception ex)
+        {
+            var message = $"設定保存に失敗しました: {ex.Message}";
+            SaveFailed?.Invoke(message);
+            System.Diagnostics.Debug.WriteLine(message);
+        }
+        return false;
     }
 }

@@ -273,6 +273,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         // マイグレーション提案
         s.SuppressMigrationProposals = CardBoardVm.SuppressMigrationProposals;
-        AppSettingsStorage.Save(s);
+        _ = AppSettingsStorage.Save(s);
     }
 }

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -102,6 +103,7 @@ public partial class EditorView : UserControl
             vm.SnippetInsertRequested += OnSnippetInsertRequested;
             vm.OpenFileRequested += OnOpenFileRequested;
             vm.SaveFileRequested += OnSaveFileRequested;
+            vm.ConfirmDiscardChangesRequested += OnConfirmDiscardChangesRequested;
             vm.ThemeChanged += OnThemeChanged;
             vm.FindPanelOpened += OnFindPanelOpened;
             vm.FindJumpRequested += OnFindJumpRequested;
@@ -215,6 +217,61 @@ public partial class EditorView : UserControl
         return file?.Path.LocalPath;
     }
 
+    private async Task<bool> OnConfirmDiscardChangesRequested()
+    {
+        var owner = TopLevel.GetTopLevel(this) as Window;
+        if (owner == null) return false;
+
+        var discardButton = new Button
+        {
+            Content = "破棄して続行",
+            MinWidth = 96,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        var cancelButton = new Button
+        {
+            Content = "キャンセル",
+            MinWidth = 96,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 8,
+            Children = { cancelButton, discardButton }
+        };
+
+        var dialog = new Window
+        {
+            Title = "未保存の変更",
+            Width = 420,
+            Height = 170,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Margin = new Thickness(16),
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "未保存の変更があります。このまま続行すると内容は失われます。",
+                        TextWrapping = TextWrapping.Wrap
+                    },
+                    buttons
+                }
+            }
+        };
+
+        discardButton.Click += (_, _) => dialog.Close(true);
+        cancelButton.Click += (_, _) => dialog.Close(false);
+
+        return await dialog.ShowDialog<bool>(owner);
+    }
+
     // ── WebView2 プレビュー ────────────────────────────────────
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -296,7 +353,7 @@ public partial class EditorView : UserControl
             switch (e.Key)
             {
                 case Key.N:
-                    vm.NewFileCommand.Execute(null);
+                    _ = vm.NewFileCommand.ExecuteAsync(null);
                     e.Handled = true;
                     break;
                 case Key.O:

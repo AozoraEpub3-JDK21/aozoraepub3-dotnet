@@ -150,10 +150,7 @@ rootCommand.SetAction((Action<ParseResult>)(parseResult =>
         LogAppender.Println("--------");
         LogAppender.Println($"URL変換開始: {urlValue}");
 
-        var webSettings = new NarouFormatSettings();
-        string settingsFile = Path.Combine(webConfig, "setting_narourb.ini");
-        if (File.Exists(settingsFile)) webSettings.Load(settingsFile);
-        NarouFormatSettings.GenerateDefaultIfMissing(settingsFile);
+        var webSettings = LoadWebFormatSettings(webConfig, urlValue);
 
         ConvertUrlToEpub(urlValue, webConfig, webSettings, downloadInterval,
             ini, vertical, titleIndex, outExt ?? ".epub", dstDir?.FullName);
@@ -458,6 +455,43 @@ static Encoding ResolveEncoding(string name) =>
         ? Encoding.GetEncoding(932)
         : Encoding.GetEncoding(name);
 
+static NarouFormatSettings LoadWebFormatSettings(string webConfig, string urlValue)
+{
+    var settings = new NarouFormatSettings();
+    string baseSettingsFile = Path.Combine(webConfig, "setting_narourb.ini");
+    NarouFormatSettings.GenerateDefaultIfMissing(baseSettingsFile);
+    settings.Load(baseSettingsFile);
+
+    string? siteKey = ResolveWebSiteKey(urlValue);
+    if (!string.IsNullOrEmpty(siteKey))
+    {
+        string siteSettingsFile = Path.Combine(webConfig, $"setting_narourb.{siteKey}.ini");
+        if (File.Exists(siteSettingsFile))
+            settings.Load(siteSettingsFile);
+    }
+
+    return settings;
+}
+
+static string? ResolveWebSiteKey(string urlValue)
+{
+    if (!Uri.TryCreate(urlValue, UriKind.Absolute, out Uri? uri))
+        return null;
+
+    string host = uri.Host.ToLowerInvariant();
+    if (host.EndsWith("syosetu.com", StringComparison.Ordinal) ||
+        host.EndsWith("novel18.syosetu.com", StringComparison.Ordinal))
+        return "narou";
+
+    if (host.EndsWith("kakuyomu.jp", StringComparison.Ordinal))
+        return "kakuyomu";
+
+    if (host.EndsWith("aozora.gr.jp", StringComparison.Ordinal))
+        return "aozora";
+
+    return null;
+}
+
 static void ConvertUrlToEpub(
     string urlValue, string webConfig, NarouFormatSettings webSettings,
     int downloadInterval, Dictionary<string, string> ini, bool vertical,
@@ -484,8 +518,27 @@ static void ConvertUrlToEpub(
         return;
     }
 
+    // optional debug dump: compare finalizer input/output line-level behavior
+    string? debugDumpDir = Environment.GetEnvironmentVariable("AOZORA_DEBUG_DUMP_DIR");
+    if (!string.IsNullOrWhiteSpace(debugDumpDir))
+    {
+        Directory.CreateDirectory(debugDumpDir);
+        File.WriteAllText(
+            Path.Combine(debugDumpDir, "before_finalizer.txt"),
+            string.Join("\n", lines),
+            Encoding.UTF8);
+    }
+
     // ファイナライズ処理
     new AozoraTextFinalizer(webSettings).Finalize(lines);
+
+    if (!string.IsNullOrWhiteSpace(debugDumpDir))
+    {
+        File.WriteAllText(
+            Path.Combine(debugDumpDir, "after_finalizer.txt"),
+            string.Join("\n", lines),
+            Encoding.UTF8);
+    }
 
     string aozoraText = string.Join("\n", lines);
     string templatePath = Path.Combine(AppContext.BaseDirectory, "template") + Path.DirectorySeparatorChar;
@@ -493,6 +546,12 @@ static void ConvertUrlToEpub(
     var epub3WriterWeb = new Epub3Writer(templatePath);
     var converterWeb = new AozoraEpub3Converter(epub3WriterWeb, templatePath);
     ApplyIniSettings(ini, converterWeb);
+    if (webSettings.EnableDakutenFont)
+    {
+        // narou.rb互換: setting_narourb.ini の enable_dakuten_font が有効なら
+        // URL変換時は濁点を外字フォント（dakuten/*.ttf）で出力する。
+        converterWeb.SetCharOutput(2, GetBool(ini, "IvsBMP"), GetBool(ini, "IvsSSP"));
+    }
     converterWeb.vertical = vertical;
 
     // BookInfo 取得（1パス目）
@@ -505,9 +564,10 @@ static void ConvertUrlToEpub(
         bookInfoWeb = converterWeb.GetBookInfo("web", webSrc1, imageInfoReaderWeb,
             (BookInfo.TitleType)Math.Clamp(titleIndex, 0, 5), false);
     }
+    bool tocVertical = GetBool(ini, "TocVertical");
     bookInfoWeb.Vertical = vertical;
     bookInfoWeb.InsertTocPage = true;
-    bookInfoWeb.TocVertical = !vertical ? false : true;
+    bookInfoWeb.TocVertical = tocVertical;
     bookInfoWeb.TitlePageType = BookInfo.TITLE_HORIZONTAL;
     bookInfoWeb.InsertTitleToc = true;
     bookInfoWeb.InsertTitlePage = true;
