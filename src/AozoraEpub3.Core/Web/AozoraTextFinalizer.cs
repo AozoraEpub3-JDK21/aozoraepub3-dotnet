@@ -19,6 +19,8 @@ public class AozoraTextFinalizer
 
     private const string OpenBrackets = "「『〔（【〈《≪";
     private const string CloseBrackets = "」』〕）】〉》≫";
+    private static readonly Regex SceneSeparatorRegex = new(@"^[ 　]*[◇◆]+[ 　]*$", RegexOptions.Compiled);
+    private static readonly Regex NoteLikeLineRegex = new(@"^[ 　]*[☆★※◇◆■□●○◎△▲▽▼]", RegexOptions.Compiled);
 
     public AozoraTextFinalizer(NarouFormatSettings settings)
     {
@@ -32,6 +34,8 @@ public class AozoraTextFinalizer
 
         if (_settings.EnablePackBlankLine)
             PackBlankLine(lines);
+
+        EnsureSceneSeparatorSpacing(lines);
 
         if (_settings.EnableAuthorComments)
             DetectAndMarkAuthorComments(lines);
@@ -47,11 +51,8 @@ public class AozoraTextFinalizer
 
         AlphabetToZenkaku(lines, _settings.EnableAlphabetForceZenkaku);
 
-        if (_settings.EnableAutoIndent)
-            ApplyAutoIndent(lines);
-
-        if (_settings.EnableHalfIndentBracket)
-            HalfIndentBracket(lines);
+        if (_settings.EnableHalfIndentBracket || _settings.EnableAutoIndent)
+            HalfIndentBracketAndAutoIndent(lines);
 
         if (_settings.EnableAutoJoinInBrackets)
             AutoJoinInBrackets(lines);
@@ -69,6 +70,26 @@ public class AozoraTextFinalizer
             ApplyReplacePatterns(lines);
 
         LogAppender.Println("ファイナライズ処理が完了しました");
+    }
+
+    /// <summary>場面転換行（◇/◆）の前後に空行を補完する</summary>
+    private static void EnsureSceneSeparatorSpacing(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            if (!SceneSeparatorRegex.IsMatch(lines[i])) continue;
+
+            if (i > 0 && lines[i - 1].Length > 0)
+            {
+                lines.Insert(i, "");
+                i++;
+            }
+
+            if (i + 1 < lines.Count && lines[i + 1].Length > 0)
+            {
+                lines.Insert(i + 1, "");
+            }
+        }
     }
 
     /// <summary>前書き・後書きの自動検出と注記挿入 (narou.rb互換)</summary>
@@ -116,11 +137,14 @@ public class AozoraTextFinalizer
         if (inPostscript) lines.Add("［＃ここで後書き終わり］");
     }
 
-    /// <summary>自動行頭字下げ (narou.rb互換: inspector 判定 + 字下げ)</summary>
-    private void ApplyAutoIndent(List<string> lines)
+    /// <summary>二分アキ挿入 + 自動行頭字下げ (narou.rb / Java実装互換)</summary>
+    private void HalfIndentBracketAndAutoIndent(List<string> lines)
     {
-        // narou.rb: inspector.inspect_indent — 字下げ不要な行を除いた中で
-        // 50% 以上が字下げされていなければ自動字下げを適用
+        bool doHalfIndent = _settings.EnableHalfIndentBracket;
+        bool doAutoIndent = _settings.EnableAutoIndent;
+
+        // narou.rb: inspector.inspect_indent
+        // 字下げ不要な行を除いた中で、50%以上が未字下げなら適用
         int targetCount = 0, noIndentCount = 0;
         foreach (string line in lines)
         {
@@ -130,30 +154,46 @@ public class AozoraTextFinalizer
             targetCount++;
             if (ch != ' ' && ch != '　') noIndentCount++;
         }
-        if (targetCount == 0) return;
-        double ratio = (double)noIndentCount / targetCount;
-        if (ratio <= 0.5) return; // 半数以上が既に字下げされている
-
-        // ダッシュ冒頭行に全角スペース追加
-        for (int i = 0; i < lines.Count; i++)
+        bool shouldIndent = false;
+        if (doAutoIndent && targetCount > 0)
         {
-            if (lines[i].Length >= 2 && lines[i].StartsWith("――"))
-                lines[i] = "　" + lines[i];
+            double ratio = (double)noIndentCount / targetCount;
+            shouldIndent = ratio > 0.5;
         }
 
-        // 行頭字下げ
         for (int i = 0; i < lines.Count; i++)
         {
             string line = lines[i];
             if (line.Length == 0) continue;
-            char ch = line[0];
-            if (AutoIndentIgnoreChars.Contains(ch)) continue;
-            // 中黒1つだけの場合は字下げしない (narou.rb: 三点リーダー代替対策)
-            if (ch == '・' && (line.Length < 2 || line[1] != '・')) continue;
-            if (ch == ' ' || ch == '　')
-                lines[i] = "　" + line.TrimStart(' ', '　');
-            else
+
+            // 二分アキ（行頭空白を除去し開き括弧前に挿入）
+            if (doHalfIndent)
+            {
+                var m = HalfIndentTarget.Match(line);
+                if (m.Success)
+                {
+                    lines[i] = "［＃二分アキ］" + m.Groups[1].Value + line[m.Length..];
+                    continue;
+                }
+            }
+
+            if (!shouldIndent) continue;
+
+            if (line.StartsWith("――", StringComparison.Ordinal))
+            {
                 lines[i] = "　" + line;
+                continue;
+            }
+
+            char ch = line[0];
+            if (AutoIndentIgnoreChars.Contains(ch) || ch == ' ' || ch == '　' || ch == '\t' || ch == '［')
+                continue;
+
+            // 中黒1つだけの場合は字下げしない (narou.rb: 三点リーダー代替対策)
+            if (ch == '・' && (line.Length < 2 || line[1] != '・'))
+                continue;
+
+            lines[i] = "　" + line;
         }
     }
 
@@ -278,8 +318,12 @@ public class AozoraTextFinalizer
                     count++;
                     i++;
                 }
-                // 単一空行: 除去、2連続以上: 1行に圧縮
-                if (count > 1)
+                bool keepSingle = count == 1 &&
+                    ((i < lines.Count && NoteLikeLineRegex.IsMatch(lines[i])) ||
+                     (result.Count > 0 && NoteLikeLineRegex.IsMatch(result[^1])));
+
+                // 単一空行: 通常は除去、注記・区切り記号の前後のみ保持
+                if (count > 1 || keepSingle)
                     result.Add("");
             }
             else
@@ -334,15 +378,15 @@ public class AozoraTextFinalizer
             if (ShouldSkipConversion(line)) continue; // URL行・変換日時行スキップ
 
             // サブタイトル行（中見出し・大見出し）は縦中横または全角数字変換のみ
-            // 2桁以上: ［＃縦中横］...［＃縦中横終わり］で囲む（縦書き時に横組み表示）
-            // 1桁: 全角数字に変換
+            // 2桁: ［＃縦中横］...［＃縦中横終わり］で囲む（縦書き時に横組み表示）
+            // 1桁 / 3桁以上: 全角数字に変換
             if (line.Contains("［＃中見出し］") || line.Contains("［＃大見出し］"))
             {
                 lines[i] = TransformOutsideAnnotations(line, s =>
                     SubtitleDigitRegex.Replace(s, m =>
                     {
                         string digits = NormalizeDigits(m.Value); // 全角数字も半角に統一
-                        if (digits.Length >= 2)
+                        if (digits.Length == 2)
                             return $"［＃縦中横］{digits}［＃縦中横終わり］";
                         return HankakuToZenkaku(digits);
                     }));
@@ -425,7 +469,8 @@ public class AozoraTextFinalizer
     // B4: 英字全角化 (narou.rb: alphabet_to_zenkaku)
     // ═══════════════════════════════════════════════════════════════
 
-    private static readonly Regex EnglishWordRegex = new(@"[\w.,!?'"" &:;-]+", RegexOptions.Compiled);
+    // narou.rb互換: ASCII英数字連続のみを英字語として扱う（日本語混在語は分割して判定）
+    private static readonly Regex EnglishWordRegex = new(@"[A-Za-z0-9.,!?'"" &:;-]+", RegexOptions.Compiled);
     private const int EnglishSentenceMinLength = 8;
 
     /// <summary>英字を全角に変換 (長い英文は保護)</summary>

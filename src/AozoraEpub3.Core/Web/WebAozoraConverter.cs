@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using AngleSharp;
 using AngleSharp.Dom;
@@ -24,6 +25,22 @@ public class WebAozoraConverter
 
     private static string RestorePlaceholders(string text) =>
         text.Replace(PhOpen, '［').Replace(PhClose, '］').Replace(PhHash, '＃');
+
+    private static readonly Regex NextDataScriptRegex = new(
+        "<script[^>]*id=[\"']__NEXT_DATA__[\"'][^>]*>(.*?)</script>",
+        RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex EpisodePathRegex = new(
+        @"/works/\d+/episodes/\d+",
+        RegexOptions.Compiled);
+
+    private static readonly Regex WorkIdRegex = new(
+        "\"workId\":\"(\\d+)\"",
+        RegexOptions.Compiled);
+
+    private static readonly Regex EpisodeRefRegex = new(
+        "\"__ref\":\"Episode:(\\d+)\"",
+        RegexOptions.Compiled);
 
     // ─── HTTP ──────────────────────────────────────────────────
     private static readonly HttpClient _http = new(new HttpClientHandler
@@ -86,31 +103,28 @@ public class WebAozoraConverter
         string? dstPath = null,
         CancellationToken ct = default)
     {
-        urlString = urlString.Trim();
+        var parsed = ParseUrlContext(urlString);
+        var adapter = WebSiteAdapterFactory.Resolve(parsed.Fqdn);
+        string normalizedUrl = adapter.NormalizeEntryUrl(parsed.UrlString);
+        parsed = ParseUrlContext(normalizedUrl);
+        adapter = WebSiteAdapterFactory.Resolve(parsed.Fqdn);
 
-        // FQDN と baseUri を抽出
-        int protoEnd = urlString.IndexOf("//", StringComparison.Ordinal) + 2;
-        int pathStart = urlString.IndexOf('/', protoEnd);
-        if (pathStart < 0) pathStart = urlString.Length;
-        string fqdn = urlString[protoEnd..pathStart];
-        string baseUri = urlString[..pathStart];
-
-        var queryMap = LoadQueryMap(fqdn, configPath);
+        var queryMap = LoadQueryMap(parsed.Fqdn, configPath);
         if (queryMap.Count == 0)
         {
-            LogAppender.Println($"サイトの定義がありません: {configPath}/{fqdn}/extract.txt");
+            LogAppender.Println($"サイトの定義がありません: {configPath}/{parsed.Fqdn}/extract.txt");
             return null;
         }
 
-        var replaceMap = LoadReplaceMap(fqdn, configPath);
+        var replaceMap = LoadReplaceMap(parsed.Fqdn, configPath);
         var converter = new WebAozoraConverter(queryMap, replaceMap, settings)
         {
             _interval = Math.Max(500, interval),
-            _baseUri = baseUri,
+            _baseUri = parsed.BaseUri,
             _dstPath = dstPath
         };
 
-        return await converter.ConvertAsync(urlString, ct);
+        return await adapter.ConvertAsync(converter, parsed.UrlString, ct);
     }
 
     /// <summary>
@@ -125,34 +139,46 @@ public class WebAozoraConverter
         string? dstPath = null,
         CancellationToken ct = default)
     {
-        urlString = urlString.Trim();
+        var parsed = ParseUrlContext(urlString);
+        var adapter = WebSiteAdapterFactory.Resolve(parsed.Fqdn);
+        string normalizedUrl = adapter.NormalizeEntryUrl(parsed.UrlString);
+        parsed = ParseUrlContext(normalizedUrl);
+        adapter = WebSiteAdapterFactory.Resolve(parsed.Fqdn);
 
-        int protoEnd = urlString.IndexOf("//", StringComparison.Ordinal) + 2;
-        int pathStart = urlString.IndexOf('/', protoEnd);
-        if (pathStart < 0) pathStart = urlString.Length;
-        string fqdn = urlString[protoEnd..pathStart];
-        string baseUri = urlString[..pathStart];
-
-        var queryMap = LoadQueryMap(fqdn, configPath);
+        var queryMap = LoadQueryMap(parsed.Fqdn, configPath);
         if (queryMap.Count == 0)
         {
-            LogAppender.Println($"サイトの定義がありません: {configPath}/{fqdn}/extract.txt");
+            LogAppender.Println($"サイトの定義がありません: {configPath}/{parsed.Fqdn}/extract.txt");
             return (null, null);
         }
 
-        var replaceMap = LoadReplaceMap(fqdn, configPath);
+        var replaceMap = LoadReplaceMap(parsed.Fqdn, configPath);
         var converter = new WebAozoraConverter(queryMap, replaceMap, settings)
         {
             _interval = Math.Max(500, interval),
-            _baseUri = baseUri,
+            _baseUri = parsed.BaseUri,
             _dstPath = dstPath
         };
 
-        var lines = await converter.ConvertAsync(urlString, ct);
+        var lines = await adapter.ConvertAsync(converter, parsed.UrlString, ct);
         return (lines, converter);
     }
 
+    private static (string UrlString, string Fqdn, string BaseUri) ParseUrlContext(string urlString)
+    {
+        string trimmed = urlString.Trim();
+        int protoEnd = trimmed.IndexOf("//", StringComparison.Ordinal) + 2;
+        int pathStart = trimmed.IndexOf('/', protoEnd);
+        if (pathStart < 0) pathStart = trimmed.Length;
+        string fqdn = trimmed[protoEnd..pathStart];
+        string baseUri = trimmed[..pathStart];
+        return (trimmed, fqdn, baseUri);
+    }
+
     // ─── 内部変換ロジック ───────────────────────────────────────
+
+    internal Task<List<string>?> ConvertWithLegacyPipelineAsync(string urlString, CancellationToken ct) =>
+        ConvertAsync(urlString, ct);
 
     private async Task<List<string>?> ConvertAsync(string urlString, CancellationToken ct)
     {
@@ -218,37 +244,44 @@ public class WebAozoraConverter
             }
         }
 
-        // 掲載URL
-        if (_settings.IncludeTocUrl)
-        {
-            lines.Add("［＃区切り線］");
-            lines.Add("");
-            lines.Add("掲載ページ：");
-            lines.Add($"<a href=\"{urlString}\">{urlString}</a>");
-            lines.Add("［＃区切り線］");
-            lines.Add("");
-        }
-
         // あらすじ
         if (_settings.IncludeStory)
         {
             var descElem = GetExtractFirstElement(doc, _queryMap.GetValueOrDefault(ExtractId.DESCRIPTION));
-            if (descElem != null)
+            bool hasStory = descElem != null;
+            if (hasStory)
             {
-                lines.Add("あらすじ：");
-                lines.Add("［＃ここから２字下げ］");
-                lines.Add("［＃ここから２字上げ］");
-                var descLines = new List<string>();
-                var sb = new StringBuilder();
-                PrintNodeInternal(descLines, sb, descElem, null, null, true);
-                FlushBuffer(descLines, sb);
-                lines.AddRange(descLines);
-                lines.Add("［＃ここで字上げ終わり］");
-                lines.Add("［＃ここで字下げ終わり］");
+                // 先頭の1空行を確保（master出力の0001.xhtmlに合わせる）
                 lines.Add("");
                 lines.Add("［＃区切り線］");
-                lines.Add("");
+                lines.Add("あらすじ：");
+                if (descElem!.LocalName.Equals("script", StringComparison.OrdinalIgnoreCase))
+                {
+                    string? descText = GetExtractText(doc, _queryMap.GetValueOrDefault(ExtractId.DESCRIPTION));
+                    if (LooksLikeNextDataBlob(descText))
+                        descText = ExtractJsonStringFieldFromNextData(tocHtml, "introduction");
+
+                    if (!string.IsNullOrWhiteSpace(descText))
+                    {
+                        AppendStoryLines(lines, NormalizeMultilineText(descText, keepEmptyLines: true));
+                    }
+                }
+                else
+                {
+                    string descText = ExtractDescriptionText(descElem);
+                    AppendStoryLines(lines, NormalizeMultilineText(descText, keepEmptyLines: true));
+                }
             }
+        }
+
+        // 掲載URL（master順序: あらすじの後）
+        if (_settings.IncludeTocUrl)
+        {
+            lines.Add("［＃改行］");
+            lines.Add("掲載ページ:");
+            lines.Add($"<a href=\"{urlString}\">{urlString}</a>");
+            lines.Add("［＃区切り線］");
+            lines.Add("");
         }
 
         // ── 各話URLリスト取得 ──
@@ -336,6 +369,15 @@ public class WebAozoraConverter
                 href = MakeAbsolute(href, listBaseUrl);
                 if (href != null) chapterHrefs.Add(href);
             }
+
+            // Next.js系サイト（カクヨム等）は HTML の <a> が一部しか無いことがある。
+            // __NEXT_DATA__ から episodes URL を補完して chapterHrefs に追加する。
+            AppendEpisodeHrefsFromNextData(tocHtml, chapterHrefs, listBaseUrl);
+
+            // 重複URLを除去（HTML抽出 + JSON補完 + ページング結合の重複対策）
+            chapterHrefs = chapterHrefs
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
 
             // ── 各話変換ループ ──
             string preChapterTitle = "";
@@ -426,11 +468,8 @@ public class WebAozoraConverter
             }
         }
 
-        // ── フッタ ──
-        lines.Add("");
-        lines.Add("［＃改ページ］");
-        lines.Add($"底本：　<a href=\"{urlString}\">{urlString}</a>");
-        lines.Add($"変換日時：　{DateTime.Now:yyyy/MM/dd HH:mm:ss}");
+        // narou.rb + AozoraEpub3 互換:
+        // Web本文の末尾に「底本/変換日時」ページを自動追加しない。
 
         // ── 画像ダウンロード ──
         if (_dstPath != null && _pendingImageDownloads.Count > 0)
@@ -462,6 +501,167 @@ public class WebAozoraConverter
         return lines;
     }
 
+    private void AppendEpisodeHrefsFromNextData(string tocHtml, List<string> chapterHrefs, string listBaseUrl)
+    {
+        var nextDataHrefs = ExtractEpisodeHrefsFromNextData(tocHtml, listBaseUrl);
+        if (nextDataHrefs.Count == 0) return;
+
+        int beforeCount = chapterHrefs.Count;
+        chapterHrefs.AddRange(nextDataHrefs);
+        int afterCount = chapterHrefs.Distinct(StringComparer.Ordinal).Count();
+        int added = afterCount - beforeCount;
+        LogAppender.Println($"  __NEXT_DATA__ から各話URLを補完: +{Math.Max(0, added)}");
+    }
+
+    private List<string> ExtractEpisodeHrefsFromNextData(string tocHtml, string listBaseUrl)
+    {
+        var scriptMatch = NextDataScriptRegex.Match(tocHtml);
+        if (!scriptMatch.Success) return [];
+
+        string nextData = WebUtility.HtmlDecode(scriptMatch.Groups[1].Value)
+            .Replace("\\/", "/");
+
+        var hrefs = new List<string>();
+        foreach (Match match in EpisodePathRegex.Matches(nextData))
+        {
+            string? absolute = MakeAbsolute(match.Value, listBaseUrl);
+            if (!string.IsNullOrEmpty(absolute))
+                hrefs.Add(absolute);
+        }
+
+        // カクヨムの __NEXT_DATA__ は episodes パスを直接持たず、
+        // "__ref":"Episode:<id>" の形で TOC を持つケースがある。
+        // その場合は workId と episode id から URL を再構築する。
+        if (hrefs.Count == 0)
+        {
+            var workIdMatch = WorkIdRegex.Match(nextData);
+            if (workIdMatch.Success)
+            {
+                string workId = workIdMatch.Groups[1].Value;
+                foreach (Match refMatch in EpisodeRefRegex.Matches(nextData))
+                {
+                    string episodeId = refMatch.Groups[1].Value;
+                    hrefs.Add($"{_baseUri}/works/{workId}/episodes/{episodeId}");
+                }
+            }
+        }
+
+        return hrefs;
+    }
+
+    private static bool LooksLikeNextDataBlob(string? text) =>
+        !string.IsNullOrEmpty(text) &&
+        (text.StartsWith("{\"props\":", StringComparison.Ordinal) ||
+         text.Contains("\"__APOLLO_STATE__\"", StringComparison.Ordinal));
+
+    private static string? ExtractJsonStringFieldFromNextData(string tocHtml, string fieldName)
+    {
+        var scriptMatch = NextDataScriptRegex.Match(tocHtml);
+        if (!scriptMatch.Success) return null;
+
+        string nextData = WebUtility.HtmlDecode(scriptMatch.Groups[1].Value);
+        string pattern = $"\"{Regex.Escape(fieldName)}\":\"((?:\\\\.|[^\"])*)\"";
+        var fieldMatch = Regex.Match(nextData, pattern, RegexOptions.Singleline);
+        if (!fieldMatch.Success) return null;
+
+        return DecodeJsonString(fieldMatch.Groups[1].Value);
+    }
+
+    private static string DecodeJsonString(string value)
+    {
+        try
+        {
+            string? deserialized = JsonSerializer.Deserialize<string>($"\"{value}\"");
+            if (!string.IsNullOrEmpty(deserialized))
+                return deserialized;
+        }
+        catch (JsonException)
+        {
+            // fallback below
+        }
+
+        string s;
+        try
+        {
+            s = Regex.Unescape(value);
+        }
+        catch (ArgumentException)
+        {
+            s = value;
+        }
+
+        return s.Replace("\\/", "/");
+    }
+
+    private static IEnumerable<string> NormalizeMultilineText(string text, bool keepEmptyLines = false)
+    {
+        // JSON由来の改行エスケープは \n のほか、全角n/円記号混在になる場合があるため吸収する
+        text = Regex.Replace(text, @"[\\＼¥￥][nｎ]", "\n");
+        text = Regex.Replace(text, @"[\\＼¥￥][rｒ]", "\r");
+
+        bool prevEmpty = false;
+        var rows = new List<string>();
+        foreach (string line in text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+        {
+            string trimmed = line.Trim();
+            if (trimmed.Length > 0)
+            {
+                rows.Add(trimmed);
+                prevEmpty = false;
+                continue;
+            }
+
+            if (keepEmptyLines && !prevEmpty)
+            {
+                rows.Add(string.Empty);
+                prevEmpty = true;
+            }
+        }
+
+        while (rows.Count > 0 && rows[0].Length == 0)
+            rows.RemoveAt(0);
+        while (rows.Count > 0 && rows[^1].Length == 0)
+            rows.RemoveAt(rows.Count - 1);
+
+        foreach (string row in rows)
+            yield return row;
+    }
+
+    private static string ExtractDescriptionText(IElement descElem)
+    {
+        string html = descElem.InnerHtml;
+        html = Regex.Replace(html, @"<br\s*/?>", "\n", RegexOptions.IgnoreCase);
+        html = Regex.Replace(html, @"</(?:p|div)>", "\n", RegexOptions.IgnoreCase);
+        html = Regex.Replace(html, @"<[^>]+>", string.Empty, RegexOptions.Singleline);
+        return WebUtility.HtmlDecode(html);
+    }
+
+    private static void AppendStoryLines(List<string> lines, IEnumerable<string> rows)
+    {
+        bool pendingBreak = false;
+        string? prevText = null;
+        foreach (string row in rows)
+        {
+            if (row.Length == 0)
+            {
+                pendingBreak = true;
+                continue;
+            }
+
+            if (pendingBreak)
+            {
+                bool isConsecutiveNote = prevText?.StartsWith("※", StringComparison.Ordinal) == true &&
+                                         row.StartsWith("※", StringComparison.Ordinal);
+                if (!isConsecutiveNote)
+                    lines.Add("［＃改行］");
+            }
+
+            lines.Add(row);
+            prevText = row;
+            pendingBreak = false;
+        }
+    }
+
     // ─── 章HTML→行リスト変換 ────────────────────────────────────
 
     private void DocToAozoraLines(
@@ -479,6 +679,10 @@ public class WebAozoraConverter
         {
             lines.Add("");
             lines.Add("［＃改ページ］");
+            // 空行圧縮後にも見出し前の1行を残すため、2行入れる
+            // (単一空行は削除されるため)
+            lines.Add("");
+            lines.Add("");
         }
 
         // 話タイトル（中見出し）
@@ -505,6 +709,11 @@ public class WebAozoraConverter
             }
         }
 
+        // 見出し直後の空行を narou.rb + AozoraEpub3 に合わせて明示する
+        lines.Add("［＃改行］");
+
+        // 空行圧縮後にも見出し後の1行を残すため、2行入れる
+        lines.Add("");
         lines.Add("");
 
         // 本文前の画像
@@ -514,7 +723,7 @@ public class WebAozoraConverter
 
         // 前書き
         var preambleDivs = GetExtractElements(doc, _queryMap.GetValueOrDefault(ExtractId.CONTENT_PREAMBLE));
-        if (preambleDivs?.Length > 0)
+        if (!_settings.EnableEraseIntroduction && preambleDivs?.Length > 0)
         {
             var preambleStart = GetExtractFirstElement(doc, _queryMap.GetValueOrDefault(ExtractId.CONTENT_PREAMBLE_START));
             var preambleEnd = GetExtractFirstElement(doc, _queryMap.GetValueOrDefault(ExtractId.CONTENT_PREAMBLE_END));
@@ -543,7 +752,7 @@ public class WebAozoraConverter
 
         // 後書き
         var appendixDivs = GetExtractElements(doc, _queryMap.GetValueOrDefault(ExtractId.CONTENT_APPENDIX));
-        if (appendixDivs?.Length > 0)
+        if (!_settings.EnableErasePostscript && appendixDivs?.Length > 0)
         {
             lines.Add("");
             lines.Add("");
@@ -625,16 +834,30 @@ public class WebAozoraConverter
                     case "br":
                         if (node.NextSibling != null)
                         {
-                            FlushBuffer(lines, sb);
+                            if (sb.Length > 0)
+                            {
+                                FlushBuffer(lines, sb);
+                            }
+                            else
+                            {
+                                // Java版互換: バッファが空でも <br> は改行1行として扱う
+                                lines.Add("");
+                            }
                         }
                         break;
                     case "div":
                     case "p":
                         if (node.PreviousSibling != null && !IsBlockNode(node.PreviousSibling))
-                            FlushBuffer(lines, sb);
+                        {
+                            if (sb.Length > 0) FlushBuffer(lines, sb);
+                            else lines.Add("");
+                        }
                         PrintNodeInternal(lines, sb, node, start, end, noHr);
                         if (node.NextSibling != null)
-                            FlushBuffer(lines, sb);
+                        {
+                            if (sb.Length > 0) FlushBuffer(lines, sb);
+                            else lines.Add("");
+                        }
                         break;
                     case "ruby":
                         PrintRuby(sb, elem);

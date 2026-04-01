@@ -27,6 +27,12 @@ public class NarouFormatSettings
     /// <summary>掲載URLを表紙ページに含める</summary>
     public bool IncludeTocUrl { get; set; } = true;
 
+    /// <summary>前書きを削除する</summary>
+    public bool EnableEraseIntroduction { get; set; } = false;
+
+    /// <summary>後書きを削除する</summary>
+    public bool EnableErasePostscript { get; set; } = false;
+
     /// <summary>更新日時を各話に表示</summary>
     public bool ShowPostDate { get; set; } = false;
 
@@ -140,6 +146,8 @@ public class NarouFormatSettings
             case "chapter_use_hashira": ChapterUseHashira = ToBool(value); break;
             case "include_story": IncludeStory = ToBool(value); break;
             case "include_toc_url": IncludeTocUrl = ToBool(value); break;
+            case "enable_erase_introduction": EnableEraseIntroduction = ToBool(value); break;
+            case "enable_erase_postscript": EnableErasePostscript = ToBool(value); break;
             case "show_post_date": ShowPostDate = ToBool(value); break;
             case "show_publish_date": ShowPublishDate = ToBool(value); break;
             case "enable_half_indent_bracket": EnableHalfIndentBracket = ToBool(value); break;
@@ -201,6 +209,8 @@ public class NarouFormatSettings
             chapter_use_hashira = true
             include_story = true
             include_toc_url = true
+            enable_erase_introduction = false
+            enable_erase_postscript = false
             show_post_date = false
             show_publish_date = false
             enable_half_indent_bracket = true
@@ -217,6 +227,7 @@ public class NarouFormatSettings
             enable_auto_indent = true
             enable_enchant_midashi = true
             enable_inspect_invalid_openclose_brackets = true
+            enable_dakuten_font = false
             enable_narou_tag = true
             """, System.Text.Encoding.UTF8);
     }

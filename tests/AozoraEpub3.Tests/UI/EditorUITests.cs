@@ -49,7 +49,7 @@ public class EditorUITests
     }
 
     [AvaloniaFact]
-    public void Editor_NewFile_ClearsState()
+    public async Task Editor_NewFile_ClearsState()
     {
         var mainVm = new MainWindowViewModel();
         var window = new MainWindow { DataContext = mainVm };
@@ -57,11 +57,77 @@ public class EditorUITests
 
         var vm = mainVm.EditorVm;
         vm.EditorText = "some text";
-        vm.NewFileCommand.Execute(null);
+        await vm.NewFileCommand.ExecuteAsync(null);
 
         Assert.Empty(vm.EditorText);
         Assert.False(vm.IsDirty);
         Assert.Null(vm.CurrentFilePath);
+    }
+
+    [AvaloniaFact]
+    public async Task Editor_NewFile_WhenDiscardRejected_KeepsState()
+    {
+        var vm = new EditorViewModel
+        {
+            EditorText = "keep me"
+        };
+        vm.ConfirmDiscardChangesRequested += () => Task.FromResult(false);
+
+        await vm.NewFileCommand.ExecuteAsync(null);
+
+        Assert.Equal("keep me", vm.EditorText);
+        Assert.True(vm.IsDirty);
+    }
+
+    [AvaloniaFact]
+    public async Task Editor_OpenFile_WhenDiscardRejected_KeepsState()
+    {
+        var tempFile = Path.GetTempFileName();
+        await File.WriteAllTextAsync(tempFile, "new content");
+        try
+        {
+            var vm = new EditorViewModel
+            {
+                EditorText = "original"
+            };
+            vm.ConfirmDiscardChangesRequested += () => Task.FromResult(false);
+            vm.OpenFileRequested += () => Task.FromResult<string?>(tempFile);
+
+            await vm.OpenFileCommand.ExecuteAsync(null);
+
+            Assert.Equal("original", vm.EditorText);
+            Assert.True(vm.IsDirty);
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Editor_OpenFile_WhenDiscardAccepted_LoadsFile()
+    {
+        var tempFile = Path.GetTempFileName();
+        await File.WriteAllTextAsync(tempFile, "new content");
+        try
+        {
+            var vm = new EditorViewModel
+            {
+                EditorText = "original"
+            };
+            vm.ConfirmDiscardChangesRequested += () => Task.FromResult(true);
+            vm.OpenFileRequested += () => Task.FromResult<string?>(tempFile);
+
+            await vm.OpenFileCommand.ExecuteAsync(null);
+
+            Assert.Equal("new content", vm.EditorText);
+            Assert.Equal(tempFile, vm.CurrentFilePath);
+            Assert.False(vm.IsDirty);
+        }
+        finally
+        {
+            if (File.Exists(tempFile)) File.Delete(tempFile);
+        }
     }
 
     [AvaloniaFact]
