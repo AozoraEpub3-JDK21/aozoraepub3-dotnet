@@ -10,50 +10,26 @@ namespace AozoraEpub3.Core.Converter;
 public class AozoraEpub3Converter
 {
     //---------------- Instance Properties ----------------//
+    // unused fields (removed from ConverterSettings; to be deleted in Step 9 cleanup)
     bool _userAlterCharEscape = false;
-    bool _autoYoko = true;
-    bool _autoYokoNum1 = true;
-    bool _autoYokoNum3 = true;
-    bool _autoYokoEQ1 = true;
-    bool _autoYokoEQ3 = true;
     bool _autoAlpha2 = false;
     bool _autoAlphaNum2 = false;
-    bool _chukiRuby = false;
-    bool _chukiKogaki = false;
-    bool _noIllust = false;
-    bool _imageFloatPage = false;
-    bool _imageFloatBlock = false;
-    bool _withMarkId = false;
-    public bool commentPrint = false;
-    public bool commentConvert = false;
-    bool _chapterSection = true;
-    int _dakutenType = 1;
-    bool _printIvsBMP = false;
-    bool _printIvsSSP = true;
-    bool _separateColophon = true;
-    int _spaceHyphenation = 0;
-    int _removeEmptyLine = 0;
-    int _maxEmptyLine = int.MaxValue;
-    bool _forceIndent = false;
     bool _removeHeadSpace = false;
-    bool _forcePageBreak = false;
-    int _forcePageBreakSize = 0;
-    int _forcePageBreakEmptyLine = 0;
-    int _forcePageBreakEmptySize = 0;
-    int _forcePageBreakChapterLevel = 0;
-    int _forcePageBreakChapterSize = 0;
 
-    //---------------- Chapter Properties ----------------//
-    bool _autoChapterName = false;
-    bool _autoChapterNumOnly = false;
-    bool _autoChapterNumTitle = false;
-    bool _autoChapterNumParen = false;
-    bool _autoChapterNumParenTitle = false;
-    bool _excludeSeqencialChapter = true;
-    bool _useNextLineChapterName = true;
-    int _maxChapterNameLength = 64;
-    Regex? _chapterPattern;
-    bool _canceled = false;
+    internal ConverterSettings _settings = new();
+
+    public bool commentPrint
+    {
+        get => _settings.CommentPrint;
+        set => _settings.CommentPrint = value;
+    }
+    public bool commentConvert
+    {
+        get => _settings.CommentConvert;
+        set => _settings.CommentConvert = value;
+    }
+
+    internal ConverterState _state = new();
 
     //---------------- Chapter Infos ----------------//
     readonly char[] _chapterNumChar = {
@@ -76,13 +52,9 @@ public class AozoraEpub3Converter
     };
     readonly string[] _chapterNumParenPrefix = { "（", "〈", "〔", "【" };
     readonly string[] _chapterNumParenSuffix = { "）", "〉", "〕", "】" };
-    Dictionary<string, int>? _chapterChukiMap = null;
 
     //---------------- Flags Variables ----------------//
-    int _inJisage = -1;
-    bool _inYoko = false;
-    readonly HashSet<int> _noTcyStart = new();
-    readonly HashSet<int> _noTcyEnd = new();
+    // (moved to ConverterState)
 
     //---------------- Patterns ----------------//
     static readonly Regex ChukiPattern = new(@"(［＃.+?］)|(<.+?>)", RegexOptions.Compiled);
@@ -119,15 +91,16 @@ public class AozoraEpub3Converter
 
     //---------------- Instance ----------------//
     readonly IEpub3Writer _writer;
-    BookInfo? _bookInfo;
-    public bool vertical;
-    public int lineNum;
-    int _pageByteSize;
-    int _sectionCharLength;
-    int _lineIdNum;
-    int _tagLevel = 0;
-    bool _nextLineIsCaption = false;
-    bool _inImageTag = false;
+    public bool vertical
+    {
+        get => _settings.Vertical;
+        set => _settings.Vertical = value;
+    }
+    public int lineNum
+    {
+        get => _state.LineNum;
+        set => _state.LineNum = value;
+    }
 
     //---------------- Page Break Types ----------------//
     static readonly PageBreakType _pageBreakNormal = new(true, 0, PageBreakType.IMAGE_PAGE_NONE);
@@ -394,29 +367,29 @@ public class AozoraEpub3Converter
 
     //---------------- Setters ----------------//
 
-    public void SetNoIllust(bool noIllust) => _noIllust = noIllust;
+    public void SetNoIllust(bool noIllust) => _settings.NoIllust = noIllust;
 
     public void SetImageFloat(bool imageFloatPage, bool imageFloatBlock)
     {
-        _imageFloatPage = imageFloatPage;
-        _imageFloatBlock = imageFloatBlock;
+        _settings.ImageFloatPage = imageFloatPage;
+        _settings.ImageFloatBlock = imageFloatBlock;
     }
 
-    public void SetWithMarkId(bool withIdSpan) => _withMarkId = withIdSpan;
+    public void SetWithMarkId(bool withIdSpan) => _settings.WithMarkId = withIdSpan;
 
     public void SetAutoYoko(bool autoYoko, bool autoYokoNum1, bool autoYokoNum3, bool autoYokoEQ1)
     {
-        _autoYoko = autoYoko;
-        _autoYokoNum1 = autoYokoNum1;
-        _autoYokoNum3 = autoYokoNum3;
-        _autoYokoEQ1 = autoYokoEQ1;
+        _settings.AutoYoko = autoYoko;
+        _settings.AutoYokoNum1 = autoYokoNum1;
+        _settings.AutoYokoNum3 = autoYokoNum3;
+        _settings.AutoYokoEQ1 = autoYokoEQ1;
     }
 
     public void SetCharOutput(int dakutenType, bool printIvsBMP, bool printIvsSSP)
     {
-        _dakutenType = dakutenType;
-        _printIvsBMP = printIvsBMP;
-        _printIvsSSP = printIvsSSP;
+        _settings.DakutenType = dakutenType;
+        _settings.PrintIvsBMP = printIvsBMP;
+        _settings.PrintIvsSSP = printIvsSSP;
     }
 
     public void SetCommentPrint(bool commentPrint, bool commentConvert)
@@ -427,11 +400,11 @@ public class AozoraEpub3Converter
 
     public void SetRemoveEmptyLine(int removeEmptyLine, int maxEmptyLine)
     {
-        _removeEmptyLine = removeEmptyLine;
-        _maxEmptyLine = maxEmptyLine == 0 ? int.MaxValue : maxEmptyLine;
+        _settings.RemoveEmptyLine = removeEmptyLine;
+        _settings.MaxEmptyLine = maxEmptyLine == 0 ? int.MaxValue : maxEmptyLine;
     }
 
-    public void SetForceIndent(bool forceIndent) => _forceIndent = forceIndent;
+    public void SetForceIndent(bool forceIndent) => _settings.ForceIndent = forceIndent;
 
     public void SetChapterLevel(
         int maxLength, bool excludeSeqencialChapter, bool useNextLineChapterName,
@@ -441,80 +414,80 @@ public class AozoraEpub3Converter
         bool autoChapterNumParen, bool autoChapterNumParenTitle,
         string chapterPattern)
     {
-        _maxChapterNameLength = maxLength;
-        _chapterSection = section;
+        _settings.MaxChapterNameLength = maxLength;
+        _settings.ChapterSection = section;
 
-        if (_chapterChukiMap == null) _chapterChukiMap = new Dictionary<string, int>();
-        else _chapterChukiMap.Clear();
+        if (_settings.ChapterChukiMap == null) _settings.ChapterChukiMap = new Dictionary<string, int>();
+        else _settings.ChapterChukiMap.Clear();
 
         if (h)
         {
-            _chapterChukiMap["ここから見出し"] = ChapterLineInfo.TYPE_CHUKI_H;
-            _chapterChukiMap["見出し"] = ChapterLineInfo.TYPE_CHUKI_H;
-            if (userSameLineChapter) _chapterChukiMap["同行見出し"] = ChapterLineInfo.TYPE_CHUKI_H;
+            _settings.ChapterChukiMap["ここから見出し"] = ChapterLineInfo.TYPE_CHUKI_H;
+            _settings.ChapterChukiMap["見出し"] = ChapterLineInfo.TYPE_CHUKI_H;
+            if (userSameLineChapter) _settings.ChapterChukiMap["同行見出し"] = ChapterLineInfo.TYPE_CHUKI_H;
         }
         if (h1)
         {
-            _chapterChukiMap["ここから大見出し"] = ChapterLineInfo.TYPE_CHUKI_H1;
-            _chapterChukiMap["大見出し"] = ChapterLineInfo.TYPE_CHUKI_H1;
-            if (userSameLineChapter) _chapterChukiMap["同行大見出し"] = ChapterLineInfo.TYPE_CHUKI_H1;
+            _settings.ChapterChukiMap["ここから大見出し"] = ChapterLineInfo.TYPE_CHUKI_H1;
+            _settings.ChapterChukiMap["大見出し"] = ChapterLineInfo.TYPE_CHUKI_H1;
+            if (userSameLineChapter) _settings.ChapterChukiMap["同行大見出し"] = ChapterLineInfo.TYPE_CHUKI_H1;
         }
         if (h2)
         {
-            _chapterChukiMap["ここから中見出し"] = ChapterLineInfo.TYPE_CHUKI_H2;
-            _chapterChukiMap["中見出し"] = ChapterLineInfo.TYPE_CHUKI_H2;
-            if (userSameLineChapter) _chapterChukiMap["同行中見出し"] = ChapterLineInfo.TYPE_CHUKI_H2;
+            _settings.ChapterChukiMap["ここから中見出し"] = ChapterLineInfo.TYPE_CHUKI_H2;
+            _settings.ChapterChukiMap["中見出し"] = ChapterLineInfo.TYPE_CHUKI_H2;
+            if (userSameLineChapter) _settings.ChapterChukiMap["同行中見出し"] = ChapterLineInfo.TYPE_CHUKI_H2;
         }
         if (h3)
         {
-            _chapterChukiMap["ここから小見出し"] = ChapterLineInfo.TYPE_CHUKI_H3;
-            _chapterChukiMap["小見出し"] = ChapterLineInfo.TYPE_CHUKI_H3;
-            if (userSameLineChapter) _chapterChukiMap["同行小見出し"] = ChapterLineInfo.TYPE_CHUKI_H3;
+            _settings.ChapterChukiMap["ここから小見出し"] = ChapterLineInfo.TYPE_CHUKI_H3;
+            _settings.ChapterChukiMap["小見出し"] = ChapterLineInfo.TYPE_CHUKI_H3;
+            if (userSameLineChapter) _settings.ChapterChukiMap["同行小見出し"] = ChapterLineInfo.TYPE_CHUKI_H3;
         }
 
-        _useNextLineChapterName = useNextLineChapterName;
-        _excludeSeqencialChapter = excludeSeqencialChapter;
-        _autoChapterName = chapterName;
-        _autoChapterNumOnly = autoChapterNumOnly;
-        _autoChapterNumTitle = autoChapterNumTitle;
-        _autoChapterNumParen = autoChapterNumParen;
-        _autoChapterNumParenTitle = autoChapterNumParenTitle;
+        _settings.UseNextLineChapterName = useNextLineChapterName;
+        _settings.ExcludeSequentialChapter = excludeSeqencialChapter;
+        _settings.AutoChapterName = chapterName;
+        _settings.AutoChapterNumOnly = autoChapterNumOnly;
+        _settings.AutoChapterNumTitle = autoChapterNumTitle;
+        _settings.AutoChapterNumParen = autoChapterNumParen;
+        _settings.AutoChapterNumParenTitle = autoChapterNumParenTitle;
 
-        _chapterPattern = null;
+        _settings.ChapterPattern = null;
         if (!string.IsNullOrEmpty(chapterPattern))
         {
-            try { _chapterPattern = new Regex(chapterPattern, RegexOptions.Compiled); }
+            try { _settings.ChapterPattern = new Regex(chapterPattern, RegexOptions.Compiled); }
             catch { LogAppender.Println("[WARN] 目次抽出のその他パターンが正しくありません: " + chapterPattern); }
         }
     }
 
-    public int GetSpaceHyphenation() => _spaceHyphenation;
-    public void SetSpaceHyphenation(int type) => _spaceHyphenation = type;
+    public int GetSpaceHyphenation() => _settings.SpaceHyphenation;
+    public void SetSpaceHyphenation(int type) => _settings.SpaceHyphenation = type;
 
     public void SetChukiRuby(bool chukiRuby, bool chukiKogaki)
     {
-        _chukiRuby = chukiRuby;
-        _chukiKogaki = chukiKogaki;
+        _settings.ChukiRuby = chukiRuby;
+        _settings.ChukiKogaki = chukiKogaki;
     }
 
     public void SetForcePageBreak(int forcePageBreakSize, int emptyLine, int emptySize, int chapterLevel, int chapterSize)
     {
-        _forcePageBreakSize = forcePageBreakSize;
-        _forcePageBreakEmptyLine = emptyLine;
-        _forcePageBreakEmptySize = emptySize;
-        _forcePageBreakChapterLevel = chapterLevel;
-        _forcePageBreakChapterSize = chapterSize;
+        _settings.ForcePageBreakSize = forcePageBreakSize;
+        _settings.ForcePageBreakEmptyLine = emptyLine;
+        _settings.ForcePageBreakEmptySize = emptySize;
+        _settings.ForcePageBreakChapterLevel = chapterLevel;
+        _settings.ForcePageBreakChapterSize = chapterSize;
 
-        _forcePageBreak = forcePageBreakSize > 0
+        _settings.ForcePageBreak = forcePageBreakSize > 0
             || (emptyLine > 0 && emptySize > 0)
             || (chapterLevel > 0 && chapterSize > 0);
 
-        if (emptyLine > 0) _forcePageBreakSize = Math.Max(_forcePageBreakSize, emptySize);
-        if (chapterLevel > 0) _forcePageBreakSize = Math.Max(_forcePageBreakSize, chapterSize);
+        if (emptyLine > 0) _settings.ForcePageBreakSize = Math.Max(_settings.ForcePageBreakSize, emptySize);
+        if (chapterLevel > 0) _settings.ForcePageBreakSize = Math.Max(_settings.ForcePageBreakSize, chapterSize);
     }
 
     /// <summary>変換キャンセル</summary>
-    public void Cancel() => _canceled = true;
+    public void Cancel() => _state.Canceled = true;
 
     //============================================================
     // Phase 6b: GetBookInfo + Chapter helpers
@@ -546,8 +519,8 @@ public class AozoraEpub3Converter
 
             int lastEmptyLine = -1;
 
-            bool autoChapter = _autoChapterName || _autoChapterNumTitle || _autoChapterNumOnly ||
-                               _autoChapterNumParen || _autoChapterNumParenTitle || _chapterPattern != null;
+            bool autoChapter = _settings.AutoChapterName || _settings.AutoChapterNumTitle || _settings.AutoChapterNumOnly ||
+                               _settings.AutoChapterNumParen || _settings.AutoChapterNumParenTitle || _settings.ChapterPattern != null;
             bool addSectionChapter = true;
             bool addChapterName = false;
             int addNextChapterName = -1;
@@ -603,7 +576,7 @@ public class AozoraEpub3Converter
                 if (inComment && !commentPrint) continue;
 
                 // 2行前が改ページと画像の行かをチェックして行番号をbookInfoに保存
-                if (!_noIllust) CheckImageOnly(bookInfo, preLines, noRubyLine, lineNum);
+                if (!_settings.NoIllust) CheckImageOnly(bookInfo, preLines, noRubyLine, lineNum);
 
                 // 見出しのChapter追加
                 if (addChapterName)
@@ -621,7 +594,7 @@ public class AozoraEpub3Converter
                             preChapterLineInfo.ChapterName = cname;
                             preChapterLineInfo.LineNum = lineNum;
                             addChapterName = false;
-                            if (_useNextLineChapterName) addNextChapterName = lineNum + 1;
+                            if (_settings.UseNextLineChapterName) addNextChapterName = lineNum + 1;
                             addSectionChapter = false;
                         }
                         // 必ず文字が入る
@@ -641,7 +614,7 @@ public class AozoraEpub3Converter
                     {
                         addSectionChapter = true;
                     }
-                    else if (_chapterChukiMap != null && _chapterChukiMap.TryGetValue(chukiName, out int chapterType))
+                    else if (_settings.ChapterChukiMap != null && _settings.ChapterChukiMap.TryGetValue(chukiName, out int chapterType))
                     {
                         // 見出し注記: 注記の後に文字がなければブロックなので次の行
                         int matchEnd = m.Index + m.Length;
@@ -658,7 +631,7 @@ public class AozoraEpub3Converter
                             bookInfo.AddChapterLineInfo(new ChapterLineInfo(lineNum, chapterType, addSectionChapter,
                                 ChapterLineInfo.GetLevel(chapterType), lastEmptyLine == lineNum - 1,
                                 GetChapterName(noRubyLine[matchEnd..])));
-                            if (_useNextLineChapterName) addNextChapterName = lineNum + 1;
+                            if (_settings.UseNextLineChapterName) addNextChapterName = lineNum + 1;
                             addChapterName = false;
                         }
                         addSectionChapter = false;
@@ -718,19 +691,19 @@ public class AozoraEpub3Converter
                     int noChukiLineLength = noChukiLine.Length;
 
                     // その他パターン
-                    if (_chapterPattern != null)
+                    if (_settings.ChapterPattern != null)
                     {
-                        if (_chapterPattern.IsMatch(noChukiLine))
+                        if (_settings.ChapterPattern.IsMatch(noChukiLine))
                         {
                             bookInfo.AddChapterLineInfo(new ChapterLineInfo(lineNum, ChapterLineInfo.TYPE_PATTERN,
                                 addSectionChapter, ChapterLineInfo.GetLevel(ChapterLineInfo.TYPE_PATTERN),
                                 lastEmptyLine == lineNum - 1, GetChapterName(noRubyLine)));
-                            if (_useNextLineChapterName) addNextChapterName = lineNum + 1;
+                            if (_settings.UseNextLineChapterName) addNextChapterName = lineNum + 1;
                             addSectionChapter = false;
                         }
                     }
 
-                    if (_autoChapterName)
+                    if (_settings.AutoChapterName)
                     {
                         bool isChapter = false;
                         // 数字を含まない章名
@@ -779,32 +752,32 @@ public class AozoraEpub3Converter
                             bookInfo.AddChapterLineInfo(new ChapterLineInfo(lineNum, ChapterLineInfo.TYPE_CHAPTER_NAME,
                                 addSectionChapter, ChapterLineInfo.GetLevel(ChapterLineInfo.TYPE_CHAPTER_NAME),
                                 lastEmptyLine == lineNum - 1, GetChapterName(noRubyLine)));
-                            if (_useNextLineChapterName) addNextChapterName = lineNum + 1;
+                            if (_settings.UseNextLineChapterName) addNextChapterName = lineNum + 1;
                             addChapterName = false;
                             addSectionChapter = false;
                         }
                     }
 
-                    if (_autoChapterNumOnly || _autoChapterNumTitle)
+                    if (_settings.AutoChapterNumOnly || _settings.AutoChapterNumTitle)
                     {
                         int idx = 0;
                         while (noChukiLineLength > idx && IsChapterNum(noChukiLine[idx])) idx++;
                         if (idx > 0)
                         {
-                            if ((_autoChapterNumOnly && noChukiLine.Length == idx) ||
-                                (_autoChapterNumTitle && noChukiLine.Length > idx && IsChapterSeparator(noChukiLine[idx])))
+                            if ((_settings.AutoChapterNumOnly && noChukiLine.Length == idx) ||
+                                (_settings.AutoChapterNumTitle && noChukiLine.Length > idx && IsChapterSeparator(noChukiLine[idx])))
                             {
                                 bookInfo.AddChapterLineInfo(new ChapterLineInfo(lineNum, ChapterLineInfo.TYPE_CHAPTER_NUM,
                                     addSectionChapter, ChapterLineInfo.GetLevel(ChapterLineInfo.TYPE_CHAPTER_NUM),
                                     lastEmptyLine == lineNum - 1, GetChapterName(noRubyLine)));
-                                if (_useNextLineChapterName) addNextChapterName = lineNum + 1;
+                                if (_settings.UseNextLineChapterName) addNextChapterName = lineNum + 1;
                                 addChapterName = false;
                                 addSectionChapter = false;
                             }
                         }
                     }
 
-                    if (_autoChapterNumParen || _autoChapterNumParenTitle)
+                    if (_settings.AutoChapterNumParen || _settings.AutoChapterNumParenTitle)
                     {
                         for (int i = 0; i < _chapterNumParenPrefix.Length; i++)
                         {
@@ -818,13 +791,13 @@ public class AozoraEpub3Converter
                                 if (noChukiLine[idx..].StartsWith(suffix))
                                 {
                                     idx += suffix.Length;
-                                    if ((_autoChapterNumParen && noChukiLine.Length == idx) ||
-                                        (_autoChapterNumParenTitle && noChukiLine.Length > idx && IsChapterSeparator(noChukiLine[idx])))
+                                    if ((_settings.AutoChapterNumParen && noChukiLine.Length == idx) ||
+                                        (_settings.AutoChapterNumParenTitle && noChukiLine.Length > idx && IsChapterSeparator(noChukiLine[idx])))
                                     {
                                         bookInfo.AddChapterLineInfo(new ChapterLineInfo(lineNum, ChapterLineInfo.TYPE_CHAPTER_NUM,
                                             addSectionChapter, 13, lastEmptyLine == lineNum - 1,
                                             GetChapterName(noRubyLine)));
-                                        if (_useNextLineChapterName) addNextChapterName = lineNum + 1;
+                                        if (_settings.UseNextLineChapterName) addNextChapterName = lineNum + 1;
                                         addChapterName = false;
                                         addSectionChapter = false;
                                     }
@@ -836,7 +809,7 @@ public class AozoraEpub3Converter
                 }
 
                 // 改ページ後の注記以外の本文を追加
-                if (_chapterSection && addSectionChapter)
+                if (_settings.ChapterSection && addSectionChapter)
                 {
                     // 底本：は目次に出さない
                     if (noRubyLine.Length > 2 && noRubyLine[0] == '底' && noRubyLine[1] == '本' && noRubyLine[2] == '：')
@@ -851,7 +824,7 @@ public class AozoraEpub3Converter
                         {
                             bookInfo.AddChapterLineInfo(new ChapterLineInfo(lineNum, ChapterLineInfo.TYPE_PAGEBREAK,
                                 true, 1, lastEmptyLine == lineNum - 1, name));
-                            if (_useNextLineChapterName) addNextChapterName = lineNum + 1;
+                            if (_settings.UseNextLineChapterName) addNextChapterName = lineNum + 1;
                             addSectionChapter = false;
                         }
                     }
@@ -931,7 +904,7 @@ public class AozoraEpub3Converter
             if (bookInfo.SubOrgTitleLine > 0) bookInfo.RemoveChapterLineInfo(bookInfo.SubOrgTitleLine);
 
             // 目次ページの見出しを除外
-            if (_excludeSeqencialChapter) bookInfo.ExcludeTocChapter();
+            if (_settings.ExcludeSequentialChapter) bookInfo.ExcludeTocChapter();
 
             return bookInfo;
         }
@@ -944,7 +917,7 @@ public class AozoraEpub3Converter
 
     /// <summary>目次やタイトル用の文字列を取得</summary>
     private string GetChapterName(string line) =>
-        CharUtils.GetChapterName(line, _maxChapterNameLength);
+        CharUtils.GetChapterName(line, _settings.MaxChapterNameLength);
 
     /// <summary>文字が章の数字ならtrue</summary>
     private bool IsChapterNum(char c)
@@ -1346,7 +1319,7 @@ public class AozoraEpub3Converter
 
             if (tags == null)
             {
-                if (chuki.EndsWith("のルビ") || (_chukiRuby && chuki.EndsWith("の注記")))
+                if (chuki.EndsWith("のルビ") || (_settings.ChukiRuby && chuki.EndsWith("の注記")))
                 {
                     // ルビに変換（ママは除外）
                     if (chuki.StartsWith("に「") && !chuki.StartsWith("に「ママ"))
@@ -1360,7 +1333,7 @@ public class AozoraEpub3Converter
                         chOffset += rt.Length + 3 - (chukiTagEnd - chukiTagStart);
                     }
                 }
-                else if (_chukiKogaki && chuki.EndsWith("の注記"))
+                else if (_settings.ChukiKogaki && chuki.EndsWith("の注記"))
                 {
                     // 後ろに小書き表示（ママは除外）
                     if (chuki.StartsWith("に「") && !chuki.StartsWith("に「ママ"))
@@ -1456,20 +1429,20 @@ public class AozoraEpub3Converter
         // ダミー切り替え用バックアップ
         TextWriter orgOut = output;
 
-        _canceled = false;
+        _state.Canceled = false;
 
         // BookInfo の参照を保持
-        _bookInfo = bookInfo;
+        _state.BookInfo = bookInfo;
 
         string? line;
 
         // 変換開始時のメンバ変数の初期化
-        _pageByteSize = 0;
-        _sectionCharLength = 0;
+        _state.PageByteSize = 0;
+        _state.SectionCharLength = 0;
         lineNum = -1;
-        _lineIdNum = 1;
-        _tagLevel = 0;
-        _inJisage = -1;
+        _state.LineIdNum = 1;
+        _state.TagLevel = 0;
+        _state.InJisage = -1;
         // 最初のページの改ページフラグを設定
         SetPageBreakTrigger(_pageBreakNormal);
 
@@ -1526,12 +1499,12 @@ public class AozoraEpub3Converter
                         {
                             // lastZeroTagLevelLineNum 以前を orgOut へ、以降は null へ
                             int lineNumBak = lineNum;
-                            _pageByteSize = 0;
-                            _sectionCharLength = 0;
+                            _state.PageByteSize = 0;
+                            _state.SectionCharLength = 0;
                             lineNum = 0;
-                            _lineIdNum = 1;
-                            _tagLevel = 0;
-                            _inJisage = -1;
+                            _state.LineIdNum = 1;
+                            _state.TagLevel = 0;
+                            _state.InJisage = -1;
                             int i = 0;
                             while (lineNum < lineNumBak)
                             {
@@ -1547,7 +1520,7 @@ public class AozoraEpub3Converter
                     // タイトルページの改ページ
                     if (bookInfo.TitleEndLine + 1 == lineNum)
                     {
-                        if (_tagLevel > 0)
+                        if (_state.TagLevel > 0)
                             bookInfo.TitleEndLine++;
                         else
                         {
@@ -1560,9 +1533,9 @@ public class AozoraEpub3Converter
                 }
 
                 // 改ページ指定行なら改ページフラグ設定（タグ内なら次の行へ）
-                if (bookInfo.IsPageBreakLine(lineNum) && _sectionCharLength > 0)
+                if (bookInfo.IsPageBreakLine(lineNum) && _state.SectionCharLength > 0)
                 {
-                    if (_tagLevel == 0) SetPageBreakTrigger(_pageBreakNormal);
+                    if (_state.TagLevel == 0) SetPageBreakTrigger(_pageBreakNormal);
                     else bookInfo.AddPageBreakLine(lineNum + 1);
                 }
 
@@ -1655,10 +1628,10 @@ public class AozoraEpub3Converter
                     ConvertTextLineToEpub3(output, line, lineNum, false, noImage);
                 }
 
-                if (_canceled) return;
+                if (_state.Canceled) return;
                 // GUI 進捗バーは CLI 版では不要のためスキップ
 
-                if (_tagLevel == 0) lastZeroTagLevelLineNum = lineNum;
+                if (_state.TagLevel == 0) lastZeroTagLevelLineNum = lineNum;
 
             } while ((line = src.ReadLine()) != null);
         }
@@ -1674,17 +1647,12 @@ public class AozoraEpub3Converter
     // （実際の処理は Phase 6f PrintLineBuffer と連動）
     //============================================================
 
-    PageBreakType? _pageBreakTrigger = null;
-    bool _skipMiddleEmpty = false;
-    int _printEmptyLines = 0;
-    int _lastChapterLine = -1;
-
     void SetPageBreakTrigger(PageBreakType? trigger)
     {
-        _printEmptyLines = 0;
-        _pageBreakTrigger = trigger;
-        if (_pageBreakTrigger != null && _pageBreakTrigger.PageType != PageBreakType.PAGE_NONE)
-            _skipMiddleEmpty = true;
+        _state.PrintEmptyLines = 0;
+        _state.PageBreakTrigger = trigger;
+        if (_state.PageBreakTrigger != null && _state.PageBreakTrigger.PageType != PageBreakType.PAGE_NONE)
+            _state.SkipMiddleEmpty = true;
     }
 
     /// <summary>chukiMap のアクセサ（static フィールドのラッパー）</summary>
@@ -1764,23 +1732,23 @@ public class AozoraEpub3Converter
         line = ReplaceChukiSufTag(ConvertGaijiChuki(line, true));
 
         // キャプション指定の画像チェック
-        if (_nextLineIsCaption)
+        if (_state.NextLineIsCaption)
         {
             if (!line.StartsWith("［＃キャプション］") && !line.StartsWith("［＃ここからキャプション］"))
             {
                 LogAppender.Warn(lineNum, "画像の次の行にキャプションがありません");
                 buf.Append(_chukiMap["画像終わり"][0]);
                 buf.Append("\n");
-                _inImageTag = false;
+                _state.InImageTag = false;
             }
         }
-        _nextLineIsCaption = false;
+        _state.NextLineIsCaption = false;
 
         char[] ch = line.ToCharArray();
         int charStart = 0;
 
         // 行頭インデント
-        if (_forceIndent && ch.Length > charStart + 1)
+        if (_settings.ForceIndent && ch.Length > charStart + 1)
         {
             switch (ch[charStart])
             {
@@ -1810,9 +1778,9 @@ public class AozoraEpub3Converter
         Match m = ChukiPattern.Match(line);
         int chukiStart = 0;
 
-        _noTcyStart.Clear();
-        _noTcyEnd.Clear();
-        if (_inYoko) _noTcyStart.Add(0);
+        _state.NoTcyStart.Clear();
+        _state.NoTcyEnd.Clear();
+        if (_state.InYoko) _state.NoTcyStart.Add(0);
 
         while (m.Success)
         {
@@ -1873,14 +1841,14 @@ public class AozoraEpub3Converter
             }
 
             // 縦中横抑止
-            if (chukiName.EndsWith("横組み")) { _inYoko = true; _noTcyStart.Add(buf.Length); }
-            else if (_inYoko && chukiName.EndsWith("横組み終わり")) { _inYoko = false; _noTcyEnd.Add(buf.Length); }
-            if (!_inYoko)
+            if (chukiName.EndsWith("横組み")) { _state.InYoko = true; _state.NoTcyStart.Add(buf.Length); }
+            else if (_state.InYoko && chukiName.EndsWith("横組み終わり")) { _state.InYoko = false; _state.NoTcyEnd.Add(buf.Length); }
+            if (!_state.InYoko)
             {
                 if (chukiName.StartsWith("縦中横"))
                 {
-                    if (chukiName.EndsWith("終わり")) _noTcyEnd.Add(buf.Length);
-                    else _noTcyStart.Add(buf.Length);
+                    if (chukiName.EndsWith("終わり")) _state.NoTcyEnd.Add(buf.Length);
+                    else _state.NoTcyStart.Add(buf.Length);
                 }
             }
 
@@ -1889,13 +1857,13 @@ public class AozoraEpub3Converter
                 bool noTagAppend = false;
 
                 // 改ページ注記
-                if (ChukiFlagPageBreak.Contains(chukiName) && !_bookInfo!.IsNoPageBreakLine(lineNum))
+                if (ChukiFlagPageBreak.Contains(chukiName) && !_state.BookInfo!.IsNoPageBreakLine(lineNum))
                 {
-                    if (_inJisage >= 0)
+                    if (_state.InJisage >= 0)
                     {
-                        LogAppender.Warn(_inJisage, "字下げ注記省略");
+                        LogAppender.Warn(_state.InJisage, "字下げ注記省略");
                         buf.Append(_chukiMap["字下げ省略"][0]);
-                        _inJisage = -1;
+                        _state.InJisage = -1;
                     }
                     if (buf.Length > 0)
                     {
@@ -1909,16 +1877,16 @@ public class AozoraEpub3Converter
                         SetPageBreakTrigger(_pageBreakMiddle);
                     else if (_chukiFlagBottom.Contains(chukiName))
                         SetPageBreakTrigger(_pageBreakBottom);
-                    else if (_bookInfo!.IsImageSectionLine(lineNum + 1))
+                    else if (_state.BookInfo!.IsImageSectionLine(lineNum + 1))
                     {
-                        if (_writer.GetImageIndex() == _bookInfo.CoverImageIndex && _bookInfo.InsertCoverPage)
+                        if (_writer.GetImageIndex() == _state.BookInfo.CoverImageIndex && _state.BookInfo.InsertCoverPage)
                             SetPageBreakTrigger(null);
                         else
                         {
                             SetPageBreakTrigger(_pageBreakImageAuto);
-                            _pageBreakImageAuto.SrcFileName = _bookInfo.GetImageSectionFileName(lineNum + 1);
+                            _pageBreakImageAuto.SrcFileName = _state.BookInfo.GetImageSectionFileName(lineNum + 1);
                             _pageBreakImageAuto.ImagePageType = _writer.GetImagePageType(
-                                _pageBreakTrigger?.SrcFileName, _tagLevel, lineNum, HasImageCaption(chukiTag));
+                                _state.PageBreakTrigger?.SrcFileName, _state.TagLevel, lineNum, HasImageCaption(chukiTag));
                         }
                     }
                     else
@@ -1927,23 +1895,23 @@ public class AozoraEpub3Converter
                 // 字下げ
                 else if (chukiName.EndsWith("字下げ"))
                 {
-                    if (_inJisage >= 0)
+                    if (_state.InJisage >= 0)
                     {
-                        LogAppender.Warn(_inJisage, "字下げ注記省略");
+                        LogAppender.Warn(_state.InJisage, "字下げ注記省略");
                         buf.Append(_chukiMap["字下げ省略"][0]);
-                        _inJisage = -1;
+                        _state.InJisage = -1;
                     }
-                    if (tags.Length > 1) _inJisage = -1;
-                    else _inJisage = lineNum;
+                    if (tags.Length > 1) _state.InJisage = -1;
+                    else _state.InJisage = lineNum;
                 }
                 else if (chukiName.EndsWith("字下げ終わり"))
                 {
-                    if (_inJisage == -1)
+                    if (_state.InJisage == -1)
                     {
                         LogAppender.Warn(lineNum, "字下げ終わり重複");
                         noTagAppend = true;
                     }
-                    _inJisage = -1;
+                    _state.InJisage = -1;
                 }
                 // 窓見出し（行頭のみ）
                 else if (chukiName.StartsWith("窓"))
@@ -2031,11 +1999,11 @@ public class AozoraEpub3Converter
                 // キャプション終わり
                 else if (chukiName.EndsWith("キャプション終わり"))
                 {
-                    if (_inImageTag)
+                    if (_state.InImageTag)
                     {
                         buf.Append(_chukiMap["画像終わり"][0]);
                         buf.Append("\n");
-                        _inImageTag = false;
+                        _state.InImageTag = false;
                         noBr = true;
                     }
                 }
@@ -2101,14 +2069,14 @@ public class AozoraEpub3Converter
                                 }
                                 else
                                 {
-                                    if (_noIllust && !_writer.IsCoverImage())
+                                    if (_settings.NoIllust && !_writer.IsCoverImage())
                                         LogAppender.Warn(lineNum, "挿絵除外", chukiTag);
                                     else
                                     {
                                         string? dstFileName = _writer.GetImageFilePath(srcFilePath, lineNum);
                                         if (dstFileName != null)
                                         {
-                                            if (_bookInfo!.IsImageSectionLine(lineNum)) noBr = true;
+                                            if (_state.BookInfo!.IsImageSectionLine(lineNum)) noBr = true;
                                             if (PrintImageChuki(output, buf, srcFilePath, dstFileName,
                                                 HasImageCaption(chukiTag), lineNum)) noBr = true;
                                         }
@@ -2120,7 +2088,7 @@ public class AozoraEpub3Converter
                 }
                 else if (lowerChukiTag.StartsWith("<img"))
                 {
-                    if (_noIllust && !_writer.IsCoverImage())
+                    if (_settings.NoIllust && !_writer.IsCoverImage())
                         LogAppender.Warn(lineNum, "挿絵除外", chukiTag);
                     else if (!noImage)
                     {
@@ -2132,7 +2100,7 @@ public class AozoraEpub3Converter
                             string? dstFileName = _writer.GetImageFilePath(srcFilePath.Trim(), lineNum);
                             if (dstFileName != null)
                             {
-                                if (_bookInfo!.IsImageSectionLine(lineNum)) noBr = true;
+                                if (_state.BookInfo!.IsImageSectionLine(lineNum)) noBr = true;
                                 if (PrintImageChuki(output, buf, srcFilePath, dstFileName,
                                     HasImageCaption(chukiTag), lineNum)) noBr = true;
                             }
@@ -2161,8 +2129,8 @@ public class AozoraEpub3Converter
                     Match m2 = _chukiPatternMap["折り返し"].Match(chukiTag);
                     if (m2.Success)
                     {
-                        if (_inJisage >= 0) { LogAppender.Warn(_inJisage, "字下げ注記省略"); buf.Append(_chukiMap["字下げ省略"][0]); }
-                        _inJisage = lineNum;
+                        if (_state.InJisage >= 0) { LogAppender.Warn(_state.InJisage, "字下げ注記省略"); buf.Append(_chukiMap["字下げ省略"][0]); }
+                        _state.InJisage = lineNum;
                         int arg0 = int.Parse(CharUtils.FullToHalf(m2.Groups[1].Value));
                         int arg1 = int.Parse(CharUtils.FullToHalf(m2.Groups[2].Value));
                         buf.Append(_chukiMap["折り返し1"][0] + arg1);
@@ -2176,8 +2144,8 @@ public class AozoraEpub3Converter
                         m2 = _chukiPatternMap["字下げ字詰め"].Match(chukiTag);
                         if (m2.Success)
                         {
-                            if (_inJisage >= 0) { LogAppender.Warn(_inJisage, "字下げ注記省略"); buf.Append(_chukiMap["字下げ省略"][0]); }
-                            _inJisage = lineNum;
+                            if (_state.InJisage >= 0) { LogAppender.Warn(_state.InJisage, "字下げ注記省略"); buf.Append(_chukiMap["字下げ省略"][0]); }
+                            _state.InJisage = lineNum;
                             int arg0 = int.Parse(CharUtils.FullToHalf(m2.Groups[1].Value));
                             int arg1 = int.Parse(CharUtils.FullToHalf(m2.Groups[2].Value));
                             buf.Append(_chukiMap["字下げ字詰め1"][0] + arg0);
@@ -2192,8 +2160,8 @@ public class AozoraEpub3Converter
                         m2 = _chukiPatternMap["字下げ複合"].Match(chukiTag);
                         if (m2.Success)
                         {
-                            if (_inJisage >= 0) { LogAppender.Warn(_inJisage, "字下げ注記省略"); buf.Append(_chukiMap["字下げ省略"][0]); }
-                            _inJisage = lineNum;
+                            if (_state.InJisage >= 0) { LogAppender.Warn(_state.InJisage, "字下げ注記省略"); buf.Append(_chukiMap["字下げ省略"][0]); }
+                            _state.InJisage = lineNum;
                             int arg0 = int.Parse(CharUtils.FullToHalf(m2.Groups[1].Value));
                             buf.Append(_chukiMap["字下げ複合1"][0] + arg0);
                             if (chukiTag.Contains("破線罫囲み")) buf.Append(" ").Append(_chukiMap["字下げ破線罫囲み"][0]);
@@ -2212,9 +2180,9 @@ public class AozoraEpub3Converter
                         m2 = _chukiPatternMap["字下げ終わり複合"].Match(chukiTag);
                         if (m2.Success)
                         {
-                            if (_inJisage == -1) LogAppender.Error(lineNum, "字下げ注記エラー");
+                            if (_state.InJisage == -1) LogAppender.Error(lineNum, "字下げ注記エラー");
                             else buf.Append(_chukiMap["ここで字下げ終わり"][0]);
-                            _inJisage = -1;
+                            _state.InJisage = -1;
                             noBr = true;
                             patternMatched = true;
                         }
@@ -2238,14 +2206,14 @@ public class AozoraEpub3Converter
         if (bufSuf.Length > 0) buf.Append(bufSuf);
 
         // 底本：チェック → 改ページ
-        if (_separateColophon && _sectionCharLength > 0 && buf.Length > 2 &&
+        if (_settings.SeparateColophon && _state.SectionCharLength > 0 && buf.Length > 2 &&
             buf[0] == '底' && buf[1] == '本' && buf[2] == '：')
         {
-            if (_inJisage >= 0) LogAppender.Error(_inJisage, "字下げ注記エラー");
+            if (_state.InJisage >= 0) LogAppender.Error(_state.InJisage, "字下げ注記エラー");
             else SetPageBreakTrigger(_pageBreakNoChapter);
         }
 
-        PrintLineBuffer(output, ConvertRubyText(buf.ToString()), lineNum, noBr || _inImageTag);
+        PrintLineBuffer(output, ConvertRubyText(buf.ToString()), lineNum, noBr || _state.InImageTag);
     }
 
     //============================================================
@@ -2327,8 +2295,8 @@ public class AozoraEpub3Converter
         bool noTcy = false;
         for (int i = begin; i < end; i++)
         {
-            if (!noTcy && _noTcyStart.Contains(i)) noTcy = true;
-            else if (noTcy && _noTcyEnd.Contains(i)) noTcy = false;
+            if (!noTcy && _state.NoTcyStart.Contains(i)) noTcy = true;
+            else if (noTcy && _state.NoTcyEnd.Contains(i)) noTcy = false;
 
             switch (ch[i])
             {
@@ -2454,13 +2422,13 @@ public class AozoraEpub3Converter
     {
         // ConvertRubyText のセグメント分割では noTcy 境界をまたぐ場合がある。
         // begin 位置での正確な noTcy 状態を復元する。
-        if (_noTcyStart.Count > 0 || _noTcyEnd.Count > 0)
+        if (_state.NoTcyStart.Count > 0 || _state.NoTcyEnd.Count > 0)
         {
             bool localNoTcy = false;
             for (int pos = 0; pos < begin; pos++)
             {
-                if (!localNoTcy && _noTcyStart.Contains(pos)) localNoTcy = true;
-                else if (localNoTcy && _noTcyEnd.Contains(pos)) localNoTcy = false;
+                if (!localNoTcy && _state.NoTcyStart.Contains(pos)) localNoTcy = true;
+                else if (localNoTcy && _state.NoTcyEnd.Contains(pos)) localNoTcy = false;
             }
             noTcy = localNoTcy;
         }
@@ -2468,8 +2436,8 @@ public class AozoraEpub3Converter
         for (int i = begin; i < end; i++)
         {
             // セグメント内の noTcy 境界を文字単位でチェック
-            if (!noTcy && _noTcyStart.Contains(i)) noTcy = true;
-            else if (noTcy && _noTcyEnd.Contains(i)) noTcy = false;
+            if (!noTcy && _state.NoTcyStart.Contains(i)) noTcy = true;
+            else if (noTcy && _state.NoTcyEnd.Contains(i)) noTcy = false;
 
             string? gaijiFileName = null;
 
@@ -2501,7 +2469,7 @@ public class AozoraEpub3Converter
                             i += 3; continue;
                         }
                     }
-                    if (_printIvsSSP)
+                    if (_settings.PrintIvsSSP)
                     {
                         if (vertical) buf.Append(_chukiMap["正立"][0]);
                         buf.Append(ch[i]); buf.Append(ch[i + 1]); buf.Append(ch[i + 2]); buf.Append(ch[i + 3]);
@@ -2529,7 +2497,7 @@ public class AozoraEpub3Converter
                             i += 2; continue;
                         }
                     }
-                    if (_printIvsBMP)
+                    if (_settings.PrintIvsBMP)
                     {
                         if (vertical) buf.Append(_chukiMap["正立"][0]);
                         buf.Append(ch[i]); buf.Append(ch[i + 1]); buf.Append(ch[i + 2]);
@@ -2586,7 +2554,7 @@ public class AozoraEpub3Converter
                         i += 2; continue;
                     }
                 }
-                if (_printIvsSSP)
+                if (_settings.PrintIvsSSP)
                 {
                     if (vertical) buf.Append(_chukiMap["正立"][0]);
                     buf.Append(ch[i]); buf.Append(ch[i + 1]); buf.Append(ch[i + 2]);
@@ -2623,7 +2591,7 @@ public class AozoraEpub3Converter
                         i++; continue;
                     }
                 }
-                if (_printIvsBMP)
+                if (_settings.PrintIvsBMP)
                 {
                     buf.Append(ch[i]); buf.Append(ch[i + 1]);
                     LogAppender.Warn(lineNum, "IVSを出力します", "" + ch[i] + ch[i + 1] + "(u+" + ((int)ch[i]).ToString("x") + "+" + ((int)ch[i + 1]).ToString("x") + ")");
@@ -2648,15 +2616,15 @@ public class AozoraEpub3Converter
             }
 
             // 自動縦中横
-            if (vertical && !(_inYoko || noTcy))
+            if (vertical && !(_state.InYoko || noTcy))
             {
                 switch (ch[i])
                 {
                     case '0': case '1': case '2': case '3': case '4':
                     case '5': case '6': case '7': case '8': case '9':
-                        if (_autoYoko)
+                        if (_settings.AutoYoko)
                         {
-                            if (_autoYokoNum3 && i + 2 < end && CharUtils.IsNum(ch[i + 1]) && CharUtils.IsNum(ch[i + 2]))
+                            if (_settings.AutoYokoNum3 && i + 2 < end && CharUtils.IsNum(ch[i + 1]) && CharUtils.IsNum(ch[i + 2]))
                             {
                                 if (!CheckTcyPrev(ch, i - 1)) break;
                                 if (!CheckTcyNext(ch, i + 3)) break;
@@ -2670,7 +2638,7 @@ public class AozoraEpub3Converter
                                 buf.Append(_chukiMap["縦中横"][0]); buf.Append(ch[i]); buf.Append(ch[i + 1]);
                                 buf.Append(_chukiMap["縦中横終わり"][0]); i++; continue;
                             }
-                            else if (_autoYokoNum1 && (i == 0 || !CharUtils.IsNum(ch[i - 1])) && (i + 1 == end || !CharUtils.IsNum(ch[i + 1])))
+                            else if (_settings.AutoYokoNum1 && (i == 0 || !CharUtils.IsNum(ch[i - 1])) && (i + 1 == end || !CharUtils.IsNum(ch[i + 1])))
                             {
                                 if (!CheckTcyPrev(ch, i - 1)) break;
                                 if (!CheckTcyNext(ch, i + 1)) break;
@@ -2697,9 +2665,9 @@ public class AozoraEpub3Converter
                         break;
 
                     case '!': case '?':
-                        if (_autoYoko)
+                        if (_settings.AutoYoko)
                         {
-                            if (_autoYokoEQ3 && i + 2 < end && (ch[i + 1] == '!' || ch[i + 1] == '?') && (ch[i + 2] == '!' || ch[i + 2] == '?'))
+                            if (_settings.AutoYokoEQ3 && i + 2 < end && (ch[i + 1] == '!' || ch[i + 1] == '?') && (ch[i + 2] == '!' || ch[i + 2] == '?'))
                             {
                                 if (!CheckTcyPrev(ch, i - 1)) break;
                                 if (!CheckTcyNext(ch, i + 3)) break;
@@ -2713,7 +2681,7 @@ public class AozoraEpub3Converter
                                 buf.Append(_chukiMap["縦中横"][0]); buf.Append(ch[i]); buf.Append(ch[i + 1]);
                                 buf.Append(_chukiMap["縦中横終わり"][0]); i++; continue;
                             }
-                            else if (_autoYokoEQ1 && (i == 0 || !CharUtils.IsNum(ch[i - 1])) && (i + 1 == end || !CharUtils.IsNum(ch[i + 1])))
+                            else if (_settings.AutoYokoEQ1 && (i == 0 || !CharUtils.IsNum(ch[i - 1])) && (i + 1 == end || !CharUtils.IsNum(ch[i + 1])))
                             {
                                 if (!CheckTcyPrev(ch, i - 1)) break;
                                 if (!CheckTcyNext(ch, i + 1)) break;
@@ -2745,14 +2713,14 @@ public class AozoraEpub3Converter
                         buf.Append(ch[i + 1] == '゛' ? (char)(ch[i] + 1) : (char)(ch[i] + 2));
                         i++; continue;
                     }
-                    if (_dakutenType == 1 && !(_inYoko || noTcy))
+                    if (_settings.DakutenType == 1 && !(_state.InYoko || noTcy))
                     {
                         buf.Append("<span class=\"dakuten\">").Append(ch[i]).Append("<span>");
                         buf.Append(ch[i + 1] == '゛' ? "゛" : "゜");
                         buf.Append("</span></span>");
                         i++; continue;
                     }
-                    else if (_dakutenType == 2)
+                    else if (_settings.DakutenType == 2)
                     {
                         string cname = "u" + ((int)ch[i]).ToString("x");
                         if (ch[i + 1] == '゛') cname += "-u3099"; else cname += "-u309a";
@@ -2839,9 +2807,9 @@ public class AozoraEpub3Converter
         if (escaped) { buf.Append(ch[idx]); ch[idx] = '　'; return; }
 
         // 全角スペース禁則
-        if (!(_inYoko || noTcy))
+        if (!(_state.InYoko || noTcy))
         {
-            switch (_spaceHyphenation)
+            switch (_settings.SpaceHyphenation)
             {
                 case 1:
                     if (idx > 20 && ch[idx] == '　' && buf.Length > 0 && buf[buf.Length - 1] != '　' &&
@@ -2857,7 +2825,7 @@ public class AozoraEpub3Converter
         }
 
         // 縦書き固有の文字変換
-        if (vertical && !_inYoko)
+        if (vertical && !_state.InYoko)
         {
             switch (ch[idx])
             {
@@ -2912,7 +2880,7 @@ public class AozoraEpub3Converter
     private bool PrintImageChuki(TextWriter? output, StringBuilder buf, string srcFileName,
         string dstFileName, bool hasCaption, int lineNum)
     {
-        int imagePageType = _writer.GetImagePageType(srcFileName, _tagLevel, lineNum, hasCaption);
+        int imagePageType = _writer.GetImagePageType(srcFileName, _state.TagLevel, lineNum, hasCaption);
         double ratio = _writer.GetImageWidthRatio(srcFileName, hasCaption);
 
         if (imagePageType == PageBreakType.IMAGE_INLINE_W)
@@ -2948,7 +2916,7 @@ public class AozoraEpub3Converter
         else if (imagePageType != PageBreakType.IMAGE_PAGE_NONE)
         {
             // 単ページ
-            if (ratio != -1 && _imageFloatPage)
+            if (ratio != -1 && _settings.ImageFloatPage)
             {
                 if (imagePageType == PageBreakType.IMAGE_PAGE_W)
                     buf.AppendFormat(_chukiMap["画像単横浮"][0], dstFileName);
@@ -2969,7 +2937,7 @@ public class AozoraEpub3Converter
         else
         {
             // 画像通常表示
-            if (ratio != -1 && _imageFloatBlock)
+            if (ratio != -1 && _settings.ImageFloatBlock)
             {
                 if (ratio <= 0) buf.AppendFormat(_chukiMap["画像浮"][0], dstFileName);
                 else buf.AppendFormat(_chukiMap["画像幅浮"][0], ratio, dstFileName);
@@ -2981,7 +2949,7 @@ public class AozoraEpub3Converter
             }
         }
 
-        if (hasCaption) { _inImageTag = true; _nextLineIsCaption = true; }
+        if (hasCaption) { _state.InImageTag = true; _state.NextLineIsCaption = true; }
         else buf.Append(_chukiMap["画像終わり"][0]);
         return false;
     }
@@ -2990,7 +2958,7 @@ public class AozoraEpub3Converter
     private void PrintImagePage(TextWriter? output, StringBuilder buf, int lineNum,
         string srcFileName, string dstFileName, int imagePageType)
     {
-        bool hasPageBreakTrigger = _pageBreakTrigger != null && !_pageBreakTrigger.NoChapter;
+        bool hasPageBreakTrigger = _state.PageBreakTrigger != null && !_state.PageBreakTrigger.NoChapter;
 
         switch (imagePageType)
         {
@@ -3024,11 +2992,11 @@ public class AozoraEpub3Converter
         int length = buf.Length;
         if (CharUtils.IsSpace(line)) { line = ""; length = 0; }
 
-        if (_removeEmptyLine > 0 && length > 0 && CharUtils.IsSpace(line)) { line = ""; length = 0; }
+        if (_settings.RemoveEmptyLine > 0 && length > 0 && CharUtils.IsSpace(line)) { line = ""; length = 0; }
 
         if (length == 0)
         {
-            if (!_skipMiddleEmpty && !noBr) _printEmptyLines++;
+            if (!_state.SkipMiddleEmpty && !noBr) _state.PrintEmptyLines++;
             buf.Length = 0;
             return;
         }
@@ -3057,46 +3025,46 @@ public class AozoraEpub3Converter
         if (output != null)
         {
             // 強制改ページ
-            if (_forcePageBreak && _pageBreakTrigger == null && _tagLevel == 0)
+            if (_settings.ForcePageBreak && _state.PageBreakTrigger == null && _state.TagLevel == 0)
             {
-                if (_pageByteSize > _forcePageBreakSize)
+                if (_state.PageByteSize > _settings.ForcePageBreakSize)
                     SetPageBreakTrigger(_pageBreakNoChapter);
-                else if (_forcePageBreakEmptyLine > 0 && _printEmptyLines >= _forcePageBreakEmptyLine &&
-                         _pageByteSize > _forcePageBreakEmptySize)
+                else if (_settings.ForcePageBreakEmptyLine > 0 && _state.PrintEmptyLines >= _settings.ForcePageBreakEmptyLine &&
+                         _state.PageByteSize > _settings.ForcePageBreakEmptySize)
                     SetPageBreakTrigger(_pageBreakNoChapter);
-                else if (_forcePageBreakChapterLevel > 0 && _pageByteSize > _forcePageBreakChapterSize)
+                else if (_settings.ForcePageBreakChapterLevel > 0 && _state.PageByteSize > _settings.ForcePageBreakChapterSize)
                 {
-                    var cli = _bookInfo?.GetChapterLineInfo(lineNum);
+                    var cli = _state.BookInfo?.GetChapterLineInfo(lineNum);
                     if (cli != null) SetPageBreakTrigger(_pageBreakNoChapter);
-                    else if (tagStart - tagEnd > 0 && (_bookInfo?.GetChapterLevel(lineNum + 1) ?? 0) > 0)
+                    else if (tagStart - tagEnd > 0 && (_state.BookInfo?.GetChapterLevel(lineNum + 1) ?? 0) > 0)
                         SetPageBreakTrigger(_pageBreakNoChapter);
                 }
             }
 
             // 改ページ処理
-            if (_pageBreakTrigger != null)
+            if (_state.PageBreakTrigger != null)
             {
-                if (_pageBreakTrigger.PageType != PageBreakType.PAGE_NONE)
-                    _writer.NextSection(output, lineNum, _pageBreakTrigger.PageType, PageBreakType.IMAGE_PAGE_NONE, null);
+                if (_state.PageBreakTrigger.PageType != PageBreakType.PAGE_NONE)
+                    _writer.NextSection(output, lineNum, _state.PageBreakTrigger.PageType, PageBreakType.IMAGE_PAGE_NONE, null);
                 else
-                    _writer.NextSection(output, lineNum, PageBreakType.PAGE_NONE, _pageBreakTrigger.ImagePageType, _pageBreakTrigger.SrcFileName);
+                    _writer.NextSection(output, lineNum, PageBreakType.PAGE_NONE, _state.PageBreakTrigger.ImagePageType, _state.PageBreakTrigger.SrcFileName);
 
-                _pageByteSize = 0;
-                _sectionCharLength = 0;
-                if (_tagLevel > 0) LogAppender.Error(lineNum, "タグが閉じていません");
-                _tagLevel = 0;
-                _lineIdNum = 0;
-                _pageBreakTrigger = null;
+                _state.PageByteSize = 0;
+                _state.SectionCharLength = 0;
+                if (_state.TagLevel > 0) LogAppender.Error(lineNum, "タグが閉じていません");
+                _state.TagLevel = 0;
+                _state.LineIdNum = 0;
+                _state.PageBreakTrigger = null;
             }
 
-            _skipMiddleEmpty = false;
+            _state.SkipMiddleEmpty = false;
 
             // 空行出力
-            if (_printEmptyLines > 0)
+            if (_state.PrintEmptyLines > 0)
             {
                 string br = _chukiMap["改行"][0];
-                int lines = Math.Min(_maxEmptyLine, _printEmptyLines - _removeEmptyLine);
-                if (_lastChapterLine >= lineNum - _printEmptyLines - 2)
+                int lines = Math.Min(_settings.MaxEmptyLine, _state.PrintEmptyLines - _settings.RemoveEmptyLine);
+                if (_state.LastChapterLine >= lineNum - _state.PrintEmptyLines - 2)
                     lines = Math.Max(1, lines);
                 for (int i = lines - 1; i >= 0; i--)
                 {
@@ -3104,65 +3072,65 @@ public class AozoraEpub3Converter
                     output.Write(br);
                     output.Write("</p>\n");
                 }
-                _pageByteSize += (br.Length + 8) * lines;
-                _printEmptyLines = 0;
+                _state.PageByteSize += (br.Length + 8) * lines;
+                _state.PrintEmptyLines = 0;
             }
 
-            _lineIdNum++;
-            var chapterLineInfo = _bookInfo?.GetChapterLineInfo(lineNum);
+            _state.LineIdNum++;
+            var chapterLineInfo = _state.BookInfo?.GetChapterLineInfo(lineNum);
             string? chapterId = null;
 
             if (noBr)
             {
                 if (chapterLineInfo != null)
                 {
-                    chapterId = "kobo." + _lineIdNum + ".1";
+                    chapterId = "kobo." + _state.LineIdNum + ".1";
                     if (line.StartsWith("<"))
                         line = new Regex(@"(<[\d\w]+)").Replace(line, "$1 id=\"" + chapterId + "\"", 1);
                     else
                     {
                         output.Write("<span id=\"" + chapterId + "\">" + line[0] + "</span>");
-                        _pageByteSize += chapterId.Length + 20;
+                        _state.PageByteSize += chapterId.Length + 20;
                         line = line[1..];
                     }
                 }
             }
             else
             {
-                if (_withMarkId || (chapterLineInfo != null && !chapterLineInfo.PageBreakChapter))
+                if (_settings.WithMarkId || (chapterLineInfo != null && !chapterLineInfo.PageBreakChapter))
                 {
-                    chapterId = "kobo." + _lineIdNum + ".1";
+                    chapterId = "kobo." + _state.LineIdNum + ".1";
                     output.Write("<p id=\"" + chapterId + "\">");
-                    _pageByteSize += chapterId.Length + 14;
+                    _state.PageByteSize += chapterId.Length + 14;
                 }
                 else
                 {
                     output.Write("<p>");
-                    _pageByteSize += 7;
+                    _state.PageByteSize += 7;
                 }
             }
 
             output.Write(line);
-            if (_forcePageBreak) _pageByteSize += System.Text.Encoding.UTF8.GetByteCount(line);
+            if (_settings.ForcePageBreak) _state.PageByteSize += System.Text.Encoding.UTF8.GetByteCount(line);
 
             if (!noBr) output.Write("</p>\n");
 
             // 章追加
-            if (chapterLineInfo != null && _lastChapterLine != lineNum)
+            if (chapterLineInfo != null && _state.LastChapterLine != lineNum)
             {
                 string? name = chapterLineInfo.ChapterName;
                 if (name != null && name.Length > 0)
                 {
                     if (chapterLineInfo.PageBreakChapter) _writer.AddChapter(null, name, chapterLineInfo.Level % 10);
                     else _writer.AddChapter(chapterId, name, chapterLineInfo.Level % 10);
-                    _lastChapterLine = lineNum;
+                    _state.LastChapterLine = lineNum;
                 }
             }
 
-            _sectionCharLength += length;
+            _state.SectionCharLength += length;
         }
 
-        _tagLevel += tagStart - tagEnd;
+        _state.TagLevel += tagStart - tagEnd;
         buf.Length = 0;
     }
 }

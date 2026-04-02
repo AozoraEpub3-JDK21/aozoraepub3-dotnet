@@ -18,4 +18,8 @@
     <EmbeddedResource Include="Resources\**\*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AozoraEpub3.Tests" />
+  </ItemGroup>
+
 </Project>
