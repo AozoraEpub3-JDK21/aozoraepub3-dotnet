@@ -7,6 +7,7 @@
 *.epub
 .claude/
 _patch_review*.py
+_compare/
 
 # 内部資料（非公開）
 docs/
