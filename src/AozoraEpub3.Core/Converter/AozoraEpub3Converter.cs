@@ -95,6 +95,8 @@ public class AozoraEpub3Converter
     readonly TcyConversionService _tcyService;
     readonly RubyConversionService _rubyService;
     readonly GaijiChukiService _gaijiChukiService;
+    readonly OutputBufferService _outputService;
+    readonly ImageService _imageService;
     public bool vertical
     {
         get => _settings.Vertical;
@@ -107,14 +109,14 @@ public class AozoraEpub3Converter
     }
 
     //---------------- Page Break Types ----------------//
-    static readonly PageBreakType _pageBreakNormal = new(true, 0, PageBreakType.IMAGE_PAGE_NONE);
-    static readonly PageBreakType _pageBreakMiddle = new(true, PageBreakType.PAGE_MIDDLE, PageBreakType.IMAGE_PAGE_NONE);
-    static readonly PageBreakType _pageBreakBottom = new(true, PageBreakType.PAGE_BOTTOM, PageBreakType.IMAGE_PAGE_NONE);
-    static readonly PageBreakType _pageBreakImageAuto = new(true, 0, PageBreakType.IMAGE_PAGE_AUTO);
-    static readonly PageBreakType _pageBreakImageW = new(true, 0, PageBreakType.IMAGE_PAGE_W);
-    static readonly PageBreakType _pageBreakImageH = new(true, 0, PageBreakType.IMAGE_PAGE_H);
-    static readonly PageBreakType _pageBreakImageNoFit = new(true, 0, PageBreakType.IMAGE_PAGE_NOFIT);
-    static readonly PageBreakType _pageBreakNoChapter = new(true, 0, PageBreakType.IMAGE_PAGE_NONE, true);
+    internal static readonly PageBreakType _pageBreakNormal = new(true, 0, PageBreakType.IMAGE_PAGE_NONE);
+    internal static readonly PageBreakType _pageBreakMiddle = new(true, PageBreakType.PAGE_MIDDLE, PageBreakType.IMAGE_PAGE_NONE);
+    internal static readonly PageBreakType _pageBreakBottom = new(true, PageBreakType.PAGE_BOTTOM, PageBreakType.IMAGE_PAGE_NONE);
+    internal static readonly PageBreakType _pageBreakImageAuto = new(true, 0, PageBreakType.IMAGE_PAGE_AUTO);
+    internal static readonly PageBreakType _pageBreakImageW = new(true, 0, PageBreakType.IMAGE_PAGE_W);
+    internal static readonly PageBreakType _pageBreakImageH = new(true, 0, PageBreakType.IMAGE_PAGE_H);
+    internal static readonly PageBreakType _pageBreakImageNoFit = new(true, 0, PageBreakType.IMAGE_PAGE_NOFIT);
+    internal static readonly PageBreakType _pageBreakNoChapter = new(true, 0, PageBreakType.IMAGE_PAGE_NONE, true);
 
     //---------------- Public Accessors ----------------//
     public string[]? GetChukiValue(string key) =>
@@ -134,6 +136,8 @@ public class AozoraEpub3Converter
         _tcyService = new TcyConversionService(_settings, _state, _charService, writer);
         _rubyService = new RubyConversionService(_state, _tcyService, _charService);
         _gaijiChukiService = new GaijiChukiService(_settings, _state);
+        _outputService = new OutputBufferService(_settings, _state, writer);
+        _imageService = new ImageService(_settings, _state, writer, _outputService);
 
         lock (_initLock)
         {
@@ -584,7 +588,7 @@ public class AozoraEpub3Converter
                 if (inComment && !commentPrint) continue;
 
                 // 2行前が改ページと画像の行かをチェックして行番号をbookInfoに保存
-                if (!_settings.NoIllust) CheckImageOnly(bookInfo, preLines, noRubyLine, lineNum);
+                if (!_settings.NoIllust) _imageService.CheckImageOnly(bookInfo, preLines, noRubyLine, lineNum);
 
                 // 見出しのChapter追加
                 if (addChapterName)
@@ -952,98 +956,17 @@ public class AozoraEpub3Converter
         return false;
     }
 
-    /// <summary>改ページ処理があった場合、画像のみページの画像行をbookInfoに追加</summary>
-    private void CheckImageOnly(BookInfo bookInfo, string?[] preLines, string line, int lineNum)
-    {
-        if (preLines[0] == null) return;
-        int bracketIdx = line.IndexOf('］');
-        if (bracketIdx <= 3) return;
-
-        string curChuki = line[2..bracketIdx];
-        if (!ChukiFlagPageBreak.Contains(curChuki)) return;
-
-        // 2行前の行末が改ページまたは現在行が先頭から2行目
-        bool prevIsPageBreak = preLines[1] == null;
-        if (!prevIsPageBreak)
-        {
-            int prev1BracketIdx = preLines[1]!.IndexOf('］');
-            if (prev1BracketIdx > 3)
-            {
-                int sharpIdx = preLines[1]!.LastIndexOf('＃') + 1;
-                if (sharpIdx > 0 && sharpIdx < preLines[1]!.Length - 1)
-                {
-                    string prev1Chuki = preLines[1]![sharpIdx..(preLines[1]!.Length - 1)];
-                    prevIsPageBreak = ChukiFlagPageBreak.Contains(prev1Chuki);
-                }
-            }
-        }
-        if (!prevIsPageBreak) return;
-
-        // 1行前が画像のみの行か確認（preLines[0] は先頭でnullチェック済み）
-        string prev0 = preLines[0]!;
-        string prev0Lower = prev0.ToLower();
-        bool isImageLine =
-            (prev0.StartsWith("［＃") &&
-             Regex.IsMatch(prev0, @"^［＃.*（.+\..+") &&
-             prev0.IndexOf('］') == prev0.Length - 1) ||
-            (prev0Lower.StartsWith("<img") &&
-             prev0.IndexOf('>') == prev0.Length - 1);
-
-        if (!isImageLine) return;
-
-        string? fileName;
-        if (prev0Lower.StartsWith("<img"))
-            fileName = GetTagAttr(prev0, "src");
-        else
-            fileName = GetImageChukiFileName(prev0, prev0.IndexOf('（'));
-
-        bookInfo.AddImageSectionLine(lineNum - 1, fileName ?? "");
-    }
-
     /// <summary>タグからattr属性値を取得</summary>
-    public string? GetTagAttr(string tag, string attr)
-    {
-        string lowerTag = tag.ToLower();
-        int srcIdx = lowerTag.IndexOf(" " + attr + "=");
-        if (srcIdx == -1) return null;
-        int start = srcIdx + attr.Length + 2;
-        if (start >= lowerTag.Length) return null;
-        int end = -1;
-        if (lowerTag[start] == '"') end = lowerTag.IndexOf('"', start + 1);
-        else if (lowerTag[start] == '\'') end = lowerTag.IndexOf('\'', start + 1);
-        if (end == -1) { end = lowerTag.IndexOf('>', start); start--; }
-        if (end == -1) { end = lowerTag.IndexOf(' ', start); start--; }
-        if (end != -1 && start + 1 <= end) return tag[(start + 1)..end].Trim();
-        return null;
-    }
+    public string? GetTagAttr(string tag, string attr) => _imageService.GetTagAttr(tag, attr);
 
     /// <summary>画像注記にキャプション付きの指定がある場合true</summary>
-    public bool HasImageCaption(string chukiTag) =>
-        chukiTag.IndexOf("キャプション付き") > 0;
+    public bool HasImageCaption(string chukiTag) => _imageService.HasImageCaption(chukiTag);
 
     /// <summary>画像注記からファイル名取得</summary>
     /// <param name="chukiTag">注記全体</param>
     /// <param name="startIdx">画像注記の'（'の位置</param>
-    public string? GetImageChukiFileName(string chukiTag, int startIdx)
-    {
-        if (startIdx < 0 || startIdx >= chukiTag.Length) return null;
-        int endIdx = chukiTag.IndexOf('、', startIdx + 1);
-        int closeIdx = chukiTag.IndexOf('）', startIdx + 1);
-        if (closeIdx == -1)
-        {
-            // '）' なし: '、' のみ使用
-        }
-        else if (endIdx == -1)
-        {
-            endIdx = closeIdx;
-        }
-        else
-        {
-            endIdx = Math.Min(endIdx, closeIdx);
-        }
-        if (endIdx > startIdx && endIdx >= 0) return chukiTag[(startIdx + 1)..endIdx];
-        return null;
-    }
+    public string? GetImageChukiFileName(string chukiTag, int startIdx) => _imageService.GetImageChukiFileName(chukiTag, startIdx);
+
 
     //============================================================
     // Phase 6c: ConvertTextToEpub3 - メイン変換ループ
@@ -1073,7 +996,7 @@ public class AozoraEpub3Converter
         _state.TagLevel = 0;
         _state.InJisage = -1;
         // 最初のページの改ページフラグを設定
-        SetPageBreakTrigger(_pageBreakNormal);
+        _outputService.SetPageBreakTrigger(_pageBreakNormal);
 
         // 直前の tagLevel=0 の行番号
         int lastZeroTagLevelLineNum = -1;
@@ -1164,7 +1087,7 @@ public class AozoraEpub3Converter
                 // 改ページ指定行なら改ページフラグ設定（タグ内なら次の行へ）
                 if (bookInfo.IsPageBreakLine(lineNum) && _state.SectionCharLength > 0)
                 {
-                    if (_state.TagLevel == 0) SetPageBreakTrigger(_pageBreakNormal);
+                    if (_state.TagLevel == 0) _outputService.SetPageBreakTrigger(_pageBreakNormal);
                     else bookInfo.AddPageBreakLine(lineNum + 1);
                 }
 
@@ -1201,7 +1124,7 @@ public class AozoraEpub3Converter
                                     _ => c.ToString()
                                 });
                             }
-                            PrintLineBuffer(output, buf, lineNum, false);
+                            _outputService.PrintLineBuffer(output, buf, lineNum, false);
                             continue;
                         }
                     }
@@ -1218,39 +1141,39 @@ public class AozoraEpub3Converter
                 var chukiMap = GetChukiMap();
                 if (lineNum == bookInfo.TitleLine)
                 {
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["表題前"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["表題前"][0]), -1, true);
                     ConvertTextLineToEpub3(output, line, lineNum, false, noImage);
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["表題後"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["表題後"][0]), -1, true);
                 }
                 else if (lineNum == bookInfo.OrgTitleLine)
                 {
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["原題前"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["原題前"][0]), -1, true);
                     ConvertTextLineToEpub3(output, line, lineNum, false, noImage);
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["原題後"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["原題後"][0]), -1, true);
                 }
                 else if (lineNum == bookInfo.SubTitleLine)
                 {
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["副題前"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["副題前"][0]), -1, true);
                     ConvertTextLineToEpub3(output, line, lineNum, false, noImage);
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["副題後"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["副題後"][0]), -1, true);
                 }
                 else if (lineNum == bookInfo.SubOrgTitleLine)
                 {
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["副原題前"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["副原題前"][0]), -1, true);
                     ConvertTextLineToEpub3(output, line, lineNum, false, noImage);
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["副原題後"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["副原題後"][0]), -1, true);
                 }
                 else if (lineNum == bookInfo.CreatorLine)
                 {
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["著者前"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["著者前"][0]), -1, true);
                     ConvertTextLineToEpub3(output, line, lineNum, false, noImage);
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["著者後"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["著者後"][0]), -1, true);
                 }
                 else if (lineNum == bookInfo.SubCreatorLine)
                 {
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["副著者前"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["副著者前"][0]), -1, true);
                     ConvertTextLineToEpub3(output, line, lineNum, false, noImage);
-                    PrintLineBuffer(output, new StringBuilder(chukiMap["副著者後"][0]), -1, true);
+                    _outputService.PrintLineBuffer(output, new StringBuilder(chukiMap["副著者後"][0]), -1, true);
                 }
                 else
                 {
@@ -1269,19 +1192,6 @@ public class AozoraEpub3Converter
             LogAppender.Error(lineNum, e.Message);
             throw;
         }
-    }
-
-    //============================================================
-    // Phase 6c 補助: SetPageBreakTrigger フィールド + スタブ
-    // （実際の処理は Phase 6f PrintLineBuffer と連動）
-    //============================================================
-
-    void SetPageBreakTrigger(PageBreakType? trigger)
-    {
-        _state.PrintEmptyLines = 0;
-        _state.PageBreakTrigger = trigger;
-        if (_state.PageBreakTrigger != null && _state.PageBreakTrigger.PageType != PageBreakType.PAGE_NONE)
-            _state.SkipMiddleEmpty = true;
     }
 
     /// <summary>chukiMap のアクセサ（static フィールドのラッパー）</summary>
@@ -1496,30 +1406,30 @@ public class AozoraEpub3Converter
                     }
                     if (buf.Length > 0)
                     {
-                        PrintLineBuffer(output, _rubyService.ConvertRubyText(buf.ToString()), lineNum, true);
+                        _outputService.PrintLineBuffer(output, _rubyService.ConvertRubyText(buf.ToString()), lineNum, true);
                         buf.Length = 0;
                     }
                     noBr = true;
                     if (ch.Length > charStart + chukiTag.Length) noBr = false;
 
                     if (_chukiFlagMiddle.Contains(chukiName))
-                        SetPageBreakTrigger(_pageBreakMiddle);
+                        _outputService.SetPageBreakTrigger(_pageBreakMiddle);
                     else if (_chukiFlagBottom.Contains(chukiName))
-                        SetPageBreakTrigger(_pageBreakBottom);
+                        _outputService.SetPageBreakTrigger(_pageBreakBottom);
                     else if (_state.BookInfo!.IsImageSectionLine(lineNum + 1))
                     {
                         if (_writer.GetImageIndex() == _state.BookInfo.CoverImageIndex && _state.BookInfo.InsertCoverPage)
-                            SetPageBreakTrigger(null);
+                            _outputService.SetPageBreakTrigger(null);
                         else
                         {
-                            SetPageBreakTrigger(_pageBreakImageAuto);
+                            _outputService.SetPageBreakTrigger(_pageBreakImageAuto);
                             _pageBreakImageAuto.SrcFileName = _state.BookInfo.GetImageSectionFileName(lineNum + 1);
                             _pageBreakImageAuto.ImagePageType = _writer.GetImagePageType(
                                 _state.PageBreakTrigger?.SrcFileName, _state.TagLevel, lineNum, HasImageCaption(chukiTag));
                         }
                     }
                     else
-                        SetPageBreakTrigger(_pageBreakNormal);
+                        _outputService.SetPageBreakTrigger(_pageBreakNormal);
                 }
                 // 字下げ
                 else if (chukiName.EndsWith("字下げ"))
@@ -1706,7 +1616,7 @@ public class AozoraEpub3Converter
                                         if (dstFileName != null)
                                         {
                                             if (_state.BookInfo!.IsImageSectionLine(lineNum)) noBr = true;
-                                            if (PrintImageChuki(output, buf, srcFilePath, dstFileName,
+                                            if (_imageService.PrintImageChuki(output, buf, srcFilePath, dstFileName,
                                                 HasImageCaption(chukiTag), lineNum)) noBr = true;
                                         }
                                     }
@@ -1730,7 +1640,7 @@ public class AozoraEpub3Converter
                             if (dstFileName != null)
                             {
                                 if (_state.BookInfo!.IsImageSectionLine(lineNum)) noBr = true;
-                                if (PrintImageChuki(output, buf, srcFilePath, dstFileName,
+                                if (_imageService.PrintImageChuki(output, buf, srcFilePath, dstFileName,
                                     HasImageCaption(chukiTag), lineNum)) noBr = true;
                             }
                         }
@@ -1839,10 +1749,10 @@ public class AozoraEpub3Converter
             buf[0] == '底' && buf[1] == '本' && buf[2] == '：')
         {
             if (_state.InJisage >= 0) LogAppender.Error(_state.InJisage, "字下げ注記エラー");
-            else SetPageBreakTrigger(_pageBreakNoChapter);
+            else _outputService.SetPageBreakTrigger(_pageBreakNoChapter);
         }
 
-        PrintLineBuffer(output, _rubyService.ConvertRubyText(buf.ToString()), lineNum, noBr || _state.InImageTag);
+        _outputService.PrintLineBuffer(output, _rubyService.ConvertRubyText(buf.ToString()), lineNum, noBr || _state.InImageTag);
     }
 
     //============================================================
@@ -1854,261 +1764,4 @@ public class AozoraEpub3Converter
     public string ConvertTcyText(string text) => _tcyService.ConvertTcyText(text);
 
 
-    /// <summary>画像タグを出力。単ページ出力なら true を返す。Java: printImageChuki</summary>
-    private bool PrintImageChuki(TextWriter? output, StringBuilder buf, string srcFileName,
-        string dstFileName, bool hasCaption, int lineNum)
-    {
-        int imagePageType = _writer.GetImagePageType(srcFileName, _state.TagLevel, lineNum, hasCaption);
-        double ratio = _writer.GetImageWidthRatio(srcFileName, hasCaption);
-
-        if (imagePageType == PageBreakType.IMAGE_INLINE_W)
-        {
-            if (ratio <= 0) buf.AppendFormat(_chukiMap["画像横"][0], dstFileName);
-            else buf.AppendFormat(_chukiMap["画像幅"][0], ratio, dstFileName);
-        }
-        else if (imagePageType == PageBreakType.IMAGE_INLINE_H)
-        {
-            if (ratio <= 0) buf.AppendFormat(_chukiMap["画像縦"][0], dstFileName);
-            else buf.AppendFormat(_chukiMap["画像幅"][0], ratio, dstFileName);
-        }
-        else if (imagePageType == PageBreakType.IMAGE_INLINE_TOP_W)
-        {
-            if (ratio <= 0) buf.AppendFormat(_chukiMap["画像上横"][0], dstFileName);
-            else buf.AppendFormat(_chukiMap["画像幅上"][0], ratio, dstFileName);
-        }
-        else if (imagePageType == PageBreakType.IMAGE_INLINE_BOTTOM_W)
-        {
-            if (ratio <= 0) buf.AppendFormat(_chukiMap["画像下横"][0], dstFileName);
-            else buf.AppendFormat(_chukiMap["画像幅下"][0], ratio, dstFileName);
-        }
-        else if (imagePageType == PageBreakType.IMAGE_INLINE_TOP)
-        {
-            if (ratio <= 0) buf.AppendFormat(_chukiMap["画像上"][0], dstFileName);
-            else buf.AppendFormat(_chukiMap["画像幅上"][0], ratio, dstFileName);
-        }
-        else if (imagePageType == PageBreakType.IMAGE_INLINE_BOTTOM)
-        {
-            if (ratio <= 0) buf.AppendFormat(_chukiMap["画像下"][0], dstFileName);
-            else buf.AppendFormat(_chukiMap["画像幅下"][0], ratio, dstFileName);
-        }
-        else if (imagePageType != PageBreakType.IMAGE_PAGE_NONE)
-        {
-            // 単ページ
-            if (ratio != -1 && _settings.ImageFloatPage)
-            {
-                if (imagePageType == PageBreakType.IMAGE_PAGE_W)
-                    buf.AppendFormat(_chukiMap["画像単横浮"][0], dstFileName);
-                else if (imagePageType == PageBreakType.IMAGE_PAGE_H)
-                    buf.AppendFormat(_chukiMap["画像単縦浮"][0], dstFileName);
-                else if (ratio <= 0) buf.AppendFormat(_chukiMap["画像単浮"][0], dstFileName);
-                else buf.AppendFormat(_chukiMap["画像単幅浮"][0], ratio, dstFileName);
-            }
-            else
-            {
-                if (buf.Length > 0) PrintLineBuffer(output, buf, lineNum, true);
-                buf.AppendFormat(_chukiMap["画像"][0], dstFileName);
-                buf.Append(_chukiMap["画像終わり"][0]);
-                PrintImagePage(output, buf, lineNum, srcFileName, dstFileName, imagePageType);
-                return true;
-            }
-        }
-        else
-        {
-            // 画像通常表示
-            if (ratio != -1 && _settings.ImageFloatBlock)
-            {
-                if (ratio <= 0) buf.AppendFormat(_chukiMap["画像浮"][0], dstFileName);
-                else buf.AppendFormat(_chukiMap["画像幅浮"][0], ratio, dstFileName);
-            }
-            else
-            {
-                if (ratio <= 0) buf.AppendFormat(_chukiMap["画像"][0], dstFileName);
-                else buf.AppendFormat(_chukiMap["画像幅"][0], ratio, dstFileName);
-            }
-        }
-
-        if (hasCaption) { _state.InImageTag = true; _state.NextLineIsCaption = true; }
-        else buf.Append(_chukiMap["画像終わり"][0]);
-        return false;
-    }
-
-    /// <summary>前後に改ページを入れて画像を出力。Java: printImagePage</summary>
-    private void PrintImagePage(TextWriter? output, StringBuilder buf, int lineNum,
-        string srcFileName, string dstFileName, int imagePageType)
-    {
-        bool hasPageBreakTrigger = _state.PageBreakTrigger != null && !_state.PageBreakTrigger.NoChapter;
-
-        switch (imagePageType)
-        {
-            case PageBreakType.IMAGE_PAGE_W:
-                SetPageBreakTrigger(_pageBreakImageW);
-                _pageBreakImageW.SrcFileName = srcFileName;
-                break;
-            case PageBreakType.IMAGE_PAGE_H:
-                SetPageBreakTrigger(_pageBreakImageH);
-                _pageBreakImageH.SrcFileName = srcFileName;
-                break;
-            case PageBreakType.IMAGE_PAGE_NOFIT:
-                SetPageBreakTrigger(_pageBreakImageNoFit);
-                _pageBreakImageNoFit.SrcFileName = srcFileName;
-                break;
-            default:
-                SetPageBreakTrigger(_pageBreakImageAuto);
-                _pageBreakImageAuto.SrcFileName = srcFileName;
-                break;
-        }
-        PrintLineBuffer(output, buf, lineNum, true);
-
-        if (hasPageBreakTrigger) SetPageBreakTrigger(_pageBreakNormal);
-        else SetPageBreakTrigger(_pageBreakNoChapter);
-    }
-
-    /// <summary>行バッファを出力。改ページフラグがあれば改ページ処理。Java: printLineBuffer</summary>
-    private void PrintLineBuffer(TextWriter? output, StringBuilder buf, int lineNum, bool noBr)
-    {
-        string line = buf.ToString();
-        int length = buf.Length;
-        if (CharUtils.IsSpace(line)) { line = ""; length = 0; }
-
-        if (_settings.RemoveEmptyLine > 0 && length > 0 && CharUtils.IsSpace(line)) { line = ""; length = 0; }
-
-        if (length == 0)
-        {
-            if (!_state.SkipMiddleEmpty && !noBr) _state.PrintEmptyLines++;
-            buf.Length = 0;
-            return;
-        }
-
-        // タグ階層カウント
-        int tagStart = 0, tagEnd = 0;
-        bool inTag = false;
-        for (int i = 0; i < length; i++)
-        {
-            if (inTag)
-            {
-                if (line[i] == '/' && i + 1 < length && line[i + 1] == '>') tagEnd++;
-                if (line[i] == '>') inTag = false;
-            }
-            else
-            {
-                if (line[i] == '<')
-                {
-                    if (i < length - 1 && line[i + 1] == '/') tagEnd++;
-                    else tagStart++;
-                    inTag = true;
-                }
-            }
-        }
-
-        if (output != null)
-        {
-            // 強制改ページ
-            if (_settings.ForcePageBreak && _state.PageBreakTrigger == null && _state.TagLevel == 0)
-            {
-                if (_state.PageByteSize > _settings.ForcePageBreakSize)
-                    SetPageBreakTrigger(_pageBreakNoChapter);
-                else if (_settings.ForcePageBreakEmptyLine > 0 && _state.PrintEmptyLines >= _settings.ForcePageBreakEmptyLine &&
-                         _state.PageByteSize > _settings.ForcePageBreakEmptySize)
-                    SetPageBreakTrigger(_pageBreakNoChapter);
-                else if (_settings.ForcePageBreakChapterLevel > 0 && _state.PageByteSize > _settings.ForcePageBreakChapterSize)
-                {
-                    var cli = _state.BookInfo?.GetChapterLineInfo(lineNum);
-                    if (cli != null) SetPageBreakTrigger(_pageBreakNoChapter);
-                    else if (tagStart - tagEnd > 0 && (_state.BookInfo?.GetChapterLevel(lineNum + 1) ?? 0) > 0)
-                        SetPageBreakTrigger(_pageBreakNoChapter);
-                }
-            }
-
-            // 改ページ処理
-            if (_state.PageBreakTrigger != null)
-            {
-                if (_state.PageBreakTrigger.PageType != PageBreakType.PAGE_NONE)
-                    _writer.NextSection(output, lineNum, _state.PageBreakTrigger.PageType, PageBreakType.IMAGE_PAGE_NONE, null);
-                else
-                    _writer.NextSection(output, lineNum, PageBreakType.PAGE_NONE, _state.PageBreakTrigger.ImagePageType, _state.PageBreakTrigger.SrcFileName);
-
-                _state.PageByteSize = 0;
-                _state.SectionCharLength = 0;
-                if (_state.TagLevel > 0) LogAppender.Error(lineNum, "タグが閉じていません");
-                _state.TagLevel = 0;
-                _state.LineIdNum = 0;
-                _state.PageBreakTrigger = null;
-            }
-
-            _state.SkipMiddleEmpty = false;
-
-            // 空行出力
-            if (_state.PrintEmptyLines > 0)
-            {
-                string br = _chukiMap["改行"][0];
-                int lines = Math.Min(_settings.MaxEmptyLine, _state.PrintEmptyLines - _settings.RemoveEmptyLine);
-                if (_state.LastChapterLine >= lineNum - _state.PrintEmptyLines - 2)
-                    lines = Math.Max(1, lines);
-                for (int i = lines - 1; i >= 0; i--)
-                {
-                    output.Write("<p>");
-                    output.Write(br);
-                    output.Write("</p>\n");
-                }
-                _state.PageByteSize += (br.Length + 8) * lines;
-                _state.PrintEmptyLines = 0;
-            }
-
-            _state.LineIdNum++;
-            var chapterLineInfo = _state.BookInfo?.GetChapterLineInfo(lineNum);
-            string? chapterId = null;
-
-            if (noBr)
-            {
-                if (chapterLineInfo != null)
-                {
-                    chapterId = "kobo." + _state.LineIdNum + ".1";
-                    if (line.StartsWith("<"))
-                        line = new Regex(@"(<[\d\w]+)").Replace(line, "$1 id=\"" + chapterId + "\"", 1);
-                    else
-                    {
-                        output.Write("<span id=\"" + chapterId + "\">" + line[0] + "</span>");
-                        _state.PageByteSize += chapterId.Length + 20;
-                        line = line[1..];
-                    }
-                }
-            }
-            else
-            {
-                if (_settings.WithMarkId || (chapterLineInfo != null && !chapterLineInfo.PageBreakChapter))
-                {
-                    chapterId = "kobo." + _state.LineIdNum + ".1";
-                    output.Write("<p id=\"" + chapterId + "\">");
-                    _state.PageByteSize += chapterId.Length + 14;
-                }
-                else
-                {
-                    output.Write("<p>");
-                    _state.PageByteSize += 7;
-                }
-            }
-
-            output.Write(line);
-            if (_settings.ForcePageBreak) _state.PageByteSize += System.Text.Encoding.UTF8.GetByteCount(line);
-
-            if (!noBr) output.Write("</p>\n");
-
-            // 章追加
-            if (chapterLineInfo != null && _state.LastChapterLine != lineNum)
-            {
-                string? name = chapterLineInfo.ChapterName;
-                if (name != null && name.Length > 0)
-                {
-                    if (chapterLineInfo.PageBreakChapter) _writer.AddChapter(null, name, chapterLineInfo.Level % 10);
-                    else _writer.AddChapter(chapterId, name, chapterLineInfo.Level % 10);
-                    _state.LastChapterLine = lineNum;
-                }
-            }
-
-            _state.SectionCharLength += length;
-        }
-
-        _state.TagLevel += tagStart - tagEnd;
-        buf.Length = 0;
-    }
 }
