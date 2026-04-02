@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="AngleSharp" Version="1.2.0" />
-    <PackageReference Include="Scriban" Version="6.6.0" />
+    <PackageReference Include="Scriban" Version="7.0.6" />
     <PackageReference Include="SharpCompress" Version="0.46.3" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.3" />
