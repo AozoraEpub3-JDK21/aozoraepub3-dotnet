@@ -25,7 +25,7 @@ public class AozoraTextFinalizer
     private static readonly Regex DashSeparatorLineRegex = new(
         @"^[ 　\t]*[─━―ー－]{3,}[ 　\t]*$",
         RegexOptions.Compiled);
-    private static readonly Regex NoteLikeLineRegex = new(@"^[ 　]*[☆★※◇◆■□●○◎△▲▽▼─━―ー－]", RegexOptions.Compiled);
+    private static readonly Regex NoteLikeLineRegex = new(@"^[ 　]*[☆★※◇◆■□●○◎△▲▽▼─━―ー－][☆★※◇◆■□●○◎△▲▽▼─━―ー－ 　]*$", RegexOptions.Compiled);
     private static readonly Regex DecimalPointRegex = new(@"([0-9０-９〇一二三四五六七八九]+)[\.．]([0-9０-９〇一二三四五六七八九]+)", RegexOptions.Compiled);
 
     public AozoraTextFinalizer(NarouFormatSettings settings)

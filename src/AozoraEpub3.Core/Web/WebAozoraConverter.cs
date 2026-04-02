@@ -737,7 +737,11 @@ public class WebAozoraConverter
         // 見出し直後の空行を narou.rb + AozoraEpub3 に合わせて明示する
         lines.Add("［＃改行］");
 
-        // 空行圧縮後にも見出し後の1行を残すため、2行入れる
+        // PackBlankLine step1=count/2 なので:
+        //   HTML先頭空行 0行 → 3/2=1 → 空行1行 (narou.rb互換)
+        //   HTML先頭空行 1行 → 4/2=2 → 空行2行 (narou.rb互換)
+        //   HTML先頭空行 2行 → 5/2=2 → 空行2行 (現在と同じ)
+        lines.Add("");
         lines.Add("");
         lines.Add("");
 
@@ -880,7 +884,11 @@ public class WebAozoraConverter
                         PrintNodeInternal(lines, sb, node, start, end, noHr);
                         if (node.NextSibling != null)
                         {
-                            if (sb.Length > 0) FlushBuffer(lines, sb);
+                            // 全角スペースのみの段落（<p>　</p>）は空行として扱う
+                            // TrimEnd で消えて FlushBuffer の重複除去に引っかかるため直接追加
+                            if (sb.Length > 0 && sb.ToString().All(char.IsWhiteSpace))
+                            { lines.Add(""); sb.Clear(); }
+                            else if (sb.Length > 0) FlushBuffer(lines, sb);
                             else lines.Add("");
                         }
                         break;
