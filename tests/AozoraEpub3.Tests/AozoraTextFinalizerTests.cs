@@ -43,9 +43,11 @@ public class AozoraTextFinalizerTests
         };
         finalizer.Finalize(lines);
 
-        // サブタイトル行: 2桁以上 → 縦中横注記で囲む (漢数字にしない)
-        Assert.Contains("第［＃縦中横］100［＃縦中横終わり］話", lines[0], StringComparison.Ordinal);
+        // サブタイトル行: 2桁 → 縦中横注記、3桁以上 → 全角数字（漢数字にしない）
+        // narou.rb互換: master_68 で「第１００話」が全角表示されることを確認済み
+        Assert.Contains("第１００話", lines[0], StringComparison.Ordinal);
         Assert.DoesNotContain("一〇〇", lines[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("縦中横", lines[0], StringComparison.Ordinal);
 
         // 本文行: 100 → 漢数字 一〇〇
         Assert.Contains("一〇〇", lines[1], StringComparison.Ordinal);

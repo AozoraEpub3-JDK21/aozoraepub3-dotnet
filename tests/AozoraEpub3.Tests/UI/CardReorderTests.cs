@@ -17,16 +17,17 @@ public class CardReorderTests
     public void CardBoard_MoveCardUp_SwapsWithPrevious()
     {
         var vm = new CardBoardViewModel();
-        // サンプル1枚 + 2枚追加 = 3枚
+        // 初期枚数を記録（ストレージに保存済みデータがある場合でも動作するよう）
+        var initial = vm.Cards.Count;
         vm.AddCardCommand.Execute(null);
         vm.AddCardCommand.Execute(null);
-        Assert.Equal(3, vm.Cards.Count);
+        Assert.Equal(initial + 2, vm.Cards.Count);
 
-        var last = vm.Cards[2];
+        var last = vm.Cards[^1];
         vm.SelectedCard = last;
         vm.MoveCardUpCommand.Execute(null);
 
-        Assert.Equal(1, vm.Cards.IndexOf(last));
+        Assert.Equal(vm.Cards.Count - 2, vm.Cards.IndexOf(last));
     }
 
     [AvaloniaFact]

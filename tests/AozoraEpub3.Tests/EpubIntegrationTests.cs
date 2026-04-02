@@ -238,9 +238,12 @@ public class EpubIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void Convert_TcyChuki_NoDoubleNesting()
+    public void Convert_TcyChuki_NoExtraAutoTcyNesting()
     {
-        // ［＃縦中横］を含むテキスト → 自動縦中横と二重ネストにならないことを確認
+        // ［＃縦中横］を含むテキスト → 自動縦中横による3重ネストにならないことを確認
+        // chuki_tag.txt の縦中横タグは narou.rb互換で意図的に二重ネスト:
+        //   <span class="tcy"><span><span class="tcy"><span>
+        // 自動縦中横がさらに追加されて3重ネストになってはいけない
         const string aozoraText =
             "縦中横テスト\n著者\n\n" +
             "驚いた［＃縦中横］!!［＃縦中横終わり］そうだ。\n" +
@@ -259,8 +262,11 @@ public class EpubIntegrationTests : IDisposable
         // tcy タグが存在すること
         Assert.Contains("class=\"tcy\"", allContent);
 
-        // 二重ネスト <span class="tcy"><span><span class="tcy"> が無いこと
-        Assert.DoesNotContain("class=\"tcy\"><span><span class=\"tcy\"", allContent);
+        // 自動縦中横が加わる3重ネスト tcy>span>span>tcy>span>span>tcy が無いこと
+        // (意図的な二重ネスト tcy>span>span>tcy は許容)
+        Assert.DoesNotContain(
+            "class=\"tcy\"><span><span class=\"tcy\"><span><span class=\"tcy\"",
+            allContent);
     }
 
     [Fact]
