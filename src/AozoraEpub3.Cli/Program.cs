@@ -76,6 +76,15 @@ var intervalOption = new Option<int>("--interval")
     DefaultValueFactory = _ => 700,
     Description = "URL変換時のダウンロード間隔 (ミリ秒)"
 };
+var webCacheModeOption = new Option<string>("--web-cache-mode")
+{
+    DefaultValueFactory = _ => "on",
+    Description = "URL変換時のHTMLキャッシュ [on|off|only]"
+};
+var webCacheDirOption = new Option<DirectoryInfo?>("--web-cache-dir")
+{
+    Description = "URL変換時のHTMLキャッシュ保存先 (省略時は --dst/.webcache または LocalAppData)"
+};
 
 var filesArgument = new Argument<string[]>("files")
 {
@@ -98,6 +107,8 @@ rootCommand.Add(deviceOption);
 rootCommand.Add(urlOption);
 rootCommand.Add(webConfigOption);
 rootCommand.Add(intervalOption);
+rootCommand.Add(webCacheModeOption);
+rootCommand.Add(webCacheDirOption);
 rootCommand.Add(filesArgument);
 
 rootCommand.SetAction((Action<ParseResult>)(parseResult =>
@@ -115,6 +126,8 @@ rootCommand.SetAction((Action<ParseResult>)(parseResult =>
     var urlValue     = parseResult.GetValue(urlOption);
     var webConfig    = parseResult.GetValue(webConfigOption) ?? Path.Combine(AppContext.BaseDirectory, "web");
     var downloadInterval = parseResult.GetValue(intervalOption);
+    var webCacheMode = (parseResult.GetValue(webCacheModeOption) ?? "on").Trim().ToLowerInvariant();
+    var webCacheDir = parseResult.GetValue(webCacheDirOption)?.FullName;
     var fileNames    = parseResult.GetValue(filesArgument) ?? [];
 
     // INI 読み込み
@@ -153,7 +166,8 @@ rootCommand.SetAction((Action<ParseResult>)(parseResult =>
         var webSettings = LoadWebFormatSettings(webConfig, urlValue);
 
         ConvertUrlToEpub(urlValue, webConfig, webSettings, downloadInterval,
-            ini, vertical, titleIndex, outExt ?? ".epub", dstDir?.FullName);
+            ini, vertical, titleIndex, outExt ?? ".epub", dstDir?.FullName,
+            webCacheMode, webCacheDir);
     }
 
     // ── 各ファイルを処理 ───────────────────────────────────────
@@ -495,16 +509,39 @@ static string? ResolveWebSiteKey(string urlValue)
 static void ConvertUrlToEpub(
     string urlValue, string webConfig, NarouFormatSettings webSettings,
     int downloadInterval, Dictionary<string, string> ini, bool vertical,
-    int titleIndex, string outExt, string? dstPath)
+    int titleIndex, string outExt, string? dstPath,
+    string webCacheMode, string? webCacheDir)
 {
     string outDir = dstPath ?? Directory.GetCurrentDirectory();
+    bool? useHtmlCache;
+    bool? cacheOnly;
+    switch (webCacheMode)
+    {
+        case "off":
+            useHtmlCache = false;
+            cacheOnly = false;
+            break;
+        case "only":
+            useHtmlCache = true;
+            cacheOnly = true;
+            break;
+        case "on":
+            useHtmlCache = true;
+            cacheOnly = false;
+            break;
+        default:
+            LogAppender.Println($"[WARN] --web-cache-mode の値が不正です: {webCacheMode} (on を使用)");
+            useHtmlCache = true;
+            cacheOnly = false;
+            break;
+    }
 
     List<string>? lines;
     WebAozoraConverter? webConverter;
     try
     {
         (lines, webConverter) = Task.Run(() => WebAozoraConverter.ConvertToAozoraLinesWithConverterAsync(
-            urlValue, webConfig, webSettings, downloadInterval, outDir)).GetAwaiter().GetResult();
+            urlValue, webConfig, webSettings, downloadInterval, outDir, useHtmlCache, cacheOnly, webCacheDir)).GetAwaiter().GetResult();
     }
     catch (Exception e)
     {
