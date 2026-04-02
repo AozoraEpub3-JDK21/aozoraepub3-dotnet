@@ -70,27 +70,28 @@ public class AozoraEpub3Converter
     static bool _inited = false;
     static readonly object _initLock = new();
 
-    static readonly Dictionary<string, string[]> _chukiMap = new();
-    static readonly HashSet<string> _chukiFlagNoBr = new();
-    static readonly HashSet<string> _chukiFlagNoRubyStart = new();
-    static readonly HashSet<string> _chukiFlagNoRubyEnd = new();
+    internal static readonly Dictionary<string, string[]> _chukiMap = new();
+    internal static readonly HashSet<string> _chukiFlagNoBr = new();
+    internal static readonly HashSet<string> _chukiFlagNoRubyStart = new();
+    internal static readonly HashSet<string> _chukiFlagNoRubyEnd = new();
     public static readonly HashSet<string> ChukiFlagPageBreak = new();
-    static readonly HashSet<string> _chukiFlagMiddle = new();
-    static readonly HashSet<string> _chukiFlagBottom = new();
-    static readonly HashSet<string> _chukiKunten = new();
-    static readonly Dictionary<string, string[]> _sufChukiMap = new();
-    static readonly Dictionary<string, Regex> _chukiPatternMap = new();
-    static Dictionary<char, string>? _replaceMap = null;
-    static Dictionary<string, string>? _replace2Map = null;
-    static Dictionary<int, string>? _utf16FontMap = null;
-    static Dictionary<int, string>? _utf32FontMap = null;
-    static Dictionary<string, string>? _ivs16FontMap = null;
-    static Dictionary<string, string>? _ivs32FontMap = null;
-    static LatinConverter _latinConverter = new();
-    static AozoraGaijiConverter _gaijiConverter = new();
+    internal static readonly HashSet<string> _chukiFlagMiddle = new();
+    internal static readonly HashSet<string> _chukiFlagBottom = new();
+    internal static readonly HashSet<string> _chukiKunten = new();
+    internal static readonly Dictionary<string, string[]> _sufChukiMap = new();
+    internal static readonly Dictionary<string, Regex> _chukiPatternMap = new();
+    internal static Dictionary<char, string>? _replaceMap = null;
+    internal static Dictionary<string, string>? _replace2Map = null;
+    internal static Dictionary<int, string>? _utf16FontMap = null;
+    internal static Dictionary<int, string>? _utf32FontMap = null;
+    internal static Dictionary<string, string>? _ivs16FontMap = null;
+    internal static Dictionary<string, string>? _ivs32FontMap = null;
+    internal static LatinConverter _latinConverter = new();
+    internal static AozoraGaijiConverter _gaijiConverter = new();
 
     //---------------- Instance ----------------//
     readonly IEpub3Writer _writer;
+    readonly CharacterConversionService _charService;
     public bool vertical
     {
         get => _settings.Vertical;
@@ -126,6 +127,7 @@ public class AozoraEpub3Converter
     public AozoraEpub3Converter(IEpub3Writer writer, string? resourcePath = null)
     {
         _writer = writer;
+        _charService = new CharacterConversionService(_settings, _state);
 
         lock (_initLock)
         {
@@ -1684,7 +1686,7 @@ public class AozoraEpub3Converter
 
             string chukiName = chukiTag[2..^1];
             if (charStart < chukiStart)
-                ConvertEscapedText(buf, ch, charStart, chukiStart);
+                _charService.ConvertEscapedText(buf, ch, charStart, chukiStart);
 
             if (_chukiKunten.Contains(chukiName) || (vertical && chukiName.StartsWith("縦中横")))
             {
@@ -1720,7 +1722,7 @@ public class AozoraEpub3Converter
         }
 
         if (charStart < ch.Length)
-            ConvertEscapedText(buf, ch, charStart, ch.Length);
+            _charService.ConvertEscapedText(buf, ch, charStart, ch.Length);
 
         return ConvertRubyText(buf.ToString()).ToString();
     }
@@ -1806,13 +1808,13 @@ public class AozoraEpub3Converter
 
                 if (charStart <= wrcBrPos && wrcBrPos <= chukiStart)
                 {
-                    ConvertEscapedText(buf, ch, charStart, wrcBrPos);
+                    _charService.ConvertEscapedText(buf, ch, charStart, wrcBrPos);
                     buf.Append(_chukiMap["改行"][0]);
-                    ConvertEscapedText(buf, ch, wrcBrPos, chukiStart - (wrcEndChar == '\0' ? 0 : 1));
+                    _charService.ConvertEscapedText(buf, ch, wrcBrPos, chukiStart - (wrcEndChar == '\0' ? 0 : 1));
                     wrcBrPos = -1;
                 }
                 else
-                    ConvertEscapedText(buf, ch, charStart, chukiStart - (wrcEndChar == '\0' ? 0 : 1));
+                    _charService.ConvertEscapedText(buf, ch, charStart, chukiStart - (wrcEndChar == '\0' ? 0 : 1));
 
                 if (tags != null) buf.Append(tags[0]);
                 if (wrcEndChar != '\0') buf.Append(wrcEndChar);
@@ -1831,13 +1833,13 @@ public class AozoraEpub3Converter
             {
                 if (charStart <= wrcBrPos && wrcBrPos <= chukiStart)
                 {
-                    ConvertEscapedText(buf, ch, charStart, wrcBrPos);
+                    _charService.ConvertEscapedText(buf, ch, charStart, wrcBrPos);
                     buf.Append(_chukiMap["改行"][0]);
-                    ConvertEscapedText(buf, ch, wrcBrPos, chukiStart);
+                    _charService.ConvertEscapedText(buf, ch, wrcBrPos, chukiStart);
                     wrcBrPos = -1;
                 }
                 else
-                    ConvertEscapedText(buf, ch, charStart, chukiStart);
+                    _charService.ConvertEscapedText(buf, ch, charStart, chukiStart);
             }
 
             // 縦中横抑止
@@ -2200,7 +2202,7 @@ public class AozoraEpub3Converter
 
         // 残りの文字出力
         if (charStart < ch.Length)
-            ConvertEscapedText(buf, ch, charStart, ch.Length);
+            _charService.ConvertEscapedText(buf, ch, charStart, ch.Length);
 
         // 行末タグ追加
         if (bufSuf.Length > 0) buf.Append(bufSuf);
@@ -2220,60 +2222,6 @@ public class AozoraEpub3Converter
     // Phase 6f: PrintLineBuffer, ConvertEscapedText, ConvertRubyText,
     //           ConvertTcyText, ConvertReplacedChar, helpers
     //============================================================
-
-    /// <summary>注記で分割された文字列単位でエスケープ処理して buf に出力。
-    /// Java: convertEscapedText</summary>
-    private void ConvertEscapedText(StringBuilder buf, char[] ch, int begin, int end)
-    {
-        if (begin >= end) return;
-
-        // 先頭 IVS 除去
-        if (begin < ch.Length)
-        {
-            if (ch[begin] == 0xDB40) { begin += 2; LogAppender.Warn(lineNum, "先頭にあるIVSを除去します"); }
-            else if (ch[begin] >= 0xFE00 && ch[begin] <= 0xFE0F) { begin++; LogAppender.Warn(lineNum, "先頭にあるIVSを除去します"); }
-        }
-        if (begin >= end) return;
-
-        // << >> ＜＜ ＞＞ → ※《 ※》
-        for (int i = begin + 1; i < end; i++)
-        {
-            switch (ch[i])
-            {
-                case '<':
-                    if (ch[i - 1] == '<' && (i == begin + 1 || ch[i - 2] != '<') && (end - 1 == i || ch[i + 1] != '<'))
-                    { ch[i - 1] = '※'; ch[i] = '《'; }
-                    break;
-                case '>':
-                    if (ch[i - 1] == '>' && (i == begin + 1 || ch[i - 2] != '>') && (end - 1 == i || ch[i + 1] != '>'))
-                    { ch[i - 1] = '※'; ch[i] = '》'; }
-                    break;
-                case '＜':
-                    if (ch[i - 1] == '＜' && (i == begin + 1 || ch[i - 2] != '＜') && (end - 1 == i || ch[i + 1] != '＜'))
-                    { ch[i - 1] = '※'; ch[i] = '《'; }
-                    break;
-                case '＞':
-                    if (ch[i - 1] == '＞' && (i == begin + 1 || ch[i - 2] != '＞') && (end - 1 == i || ch[i + 1] != '＞'))
-                    { ch[i - 1] = '※'; ch[i] = '》'; }
-                    break;
-                case '゙': ch[i] = '゛'; break;
-                case '゚': ch[i] = '゜'; break;
-            }
-        }
-
-        // NULL 除去 + &<> エスケープ
-        for (int idx = begin; idx < end; idx++)
-        {
-            switch (ch[idx])
-            {
-                case '\0': break;
-                case '&': buf.Append("&amp;"); break;
-                case '<': buf.Append("&lt;"); break;
-                case '>': buf.Append("&gt;"); break;
-                default: buf.Append(ch[idx]); break;
-            }
-        }
-    }
 
     private enum RubyCharType { Null, Alpha, FullAlpha, Kanji, Hiragana, Katakana }
 
@@ -2334,9 +2282,9 @@ public class AozoraEpub3Converter
                                 buf.Length -= rubyEndChuki.Length;
                             for (int j = 0; j < rubyTopStart - rubyStart; j++)
                             {
-                                ConvertReplacedChar(buf, ch, rubyStart + j, noTcy);
+                                _charService.ConvertReplacedChar(buf, ch, rubyStart + j, noTcy);
                                 buf.Append(_chukiMap.TryGetValue("ルビ前", out var rbf) ? rbf[0] : "<rt>");
-                                ConvertReplacedChar(buf, ch, rubyTopStart + 1 + j, true);
+                                _charService.ConvertReplacedChar(buf, ch, rubyTopStart + 1 + j, true);
                                 buf.Append(_chukiMap.TryGetValue("ルビ後", out var rba) ? rba[0] : "</rt>");
                             }
                             buf.Append(rubyEndChuki);
@@ -2389,7 +2337,7 @@ public class AozoraEpub3Converter
                     else if (CharUtils.IsKatakana(ch[i])) { rubyStart = i; rubyCharType = RubyCharType.Katakana; }
                     else if (CharUtils.IsHalfSpace(ch[i]) && ch[i] != '>') { rubyStart = i; rubyCharType = RubyCharType.Alpha; }
                     else if (CharUtils.IsFullAlpha(ch[i]) || CharUtils.IsFullNum(ch[i])) { rubyStart = i; rubyCharType = RubyCharType.FullAlpha; }
-                    else { ConvertReplacedChar(buf, ch, i, noTcy); rubyCharType = RubyCharType.Null; }
+                    else { _charService.ConvertReplacedChar(buf, ch, i, noTcy); rubyCharType = RubyCharType.Null; }
                 }
             }
         }
@@ -2733,7 +2681,7 @@ public class AozoraEpub3Converter
                 }
             }
 
-            ConvertReplacedChar(buf, ch, i, noTcy);
+            _charService.ConvertReplacedChar(buf, ch, i, noTcy);
         }
     }
 
@@ -2761,119 +2709,6 @@ public class AozoraEpub3Converter
             return true;
         }
         return true;
-    }
-
-    /// <summary>1文字をbufに出力。エスケープ・置換処理あり。Java: convertReplacedChar</summary>
-    private void ConvertReplacedChar(StringBuilder buf, char[] ch, int idx, bool noTcy)
-    {
-        if (ch[idx] == '\0') return;
-
-        int length = buf.Length;
-
-        // エスケープ文字処理
-        bool escaped = false;
-        if (idx > 0)
-        {
-            switch (ch[idx])
-            {
-                case '》': case '《': case '｜': case '＃': case '※':
-                    if (ch[idx - 1] == '※')
-                    {
-                        buf.Length = length - 1;
-                        escaped = true;
-                    }
-                    break;
-            }
-        }
-
-        if (_replaceMap != null && _replaceMap.TryGetValue(ch[idx], out string? replaced1))
-        {
-            buf.Append(replaced1); return;
-        }
-
-        if (idx > 1 || (idx == 1 && !escaped))
-        {
-            if (_replace2Map != null)
-            {
-                string key = "" + ch[idx - (escaped ? 2 : 1)] + ch[idx];
-                if (_replace2Map.TryGetValue(key, out string? replaced2))
-                {
-                    buf.Length = length - 1;
-                    buf.Append(replaced2); return;
-                }
-            }
-        }
-
-        if (escaped) { buf.Append(ch[idx]); ch[idx] = '　'; return; }
-
-        // 全角スペース禁則
-        if (!(_state.InYoko || noTcy))
-        {
-            switch (_settings.SpaceHyphenation)
-            {
-                case 1:
-                    if (idx > 20 && ch[idx] == '　' && buf.Length > 0 && buf[buf.Length - 1] != '　' &&
-                        (idx - 1 == ch.Length || idx + 1 < ch.Length && ch[idx + 1] != '　'))
-                    { buf.Append("<span class=\"fullsp\"> </span>"); return; }
-                    break;
-                case 2:
-                    if (idx > 20 && ch[idx] == '　' && buf.Length > 0 && buf[buf.Length - 1] != '　' &&
-                        (idx - 1 == ch.Length || idx + 1 < ch.Length && ch[idx + 1] != '　'))
-                    { buf.Append((char)0x2000).Append((char)0x2000); return; }
-                    break;
-            }
-        }
-
-        // 縦書き固有の文字変換
-        if (vertical && !_state.InYoko)
-        {
-            switch (ch[idx])
-            {
-                case '≪': buf.Append("《"); return;
-                case '≫': buf.Append("》"); return;
-                case '\u201C': buf.Append("〝"); return;   // "
-                case '\u201D': buf.Append("〟"); return;   // "
-                case '―': buf.Append("─"); return;
-                case '÷': case '±': case '∞': case '∴': case '∵':
-                case 'Ⅰ': case 'Ⅱ': case 'Ⅲ': case 'Ⅳ': case 'Ⅴ': case 'Ⅵ':
-                case 'Ⅶ': case 'Ⅷ': case 'Ⅸ': case 'Ⅹ': case 'Ⅺ': case 'Ⅻ':
-                case 'ⅰ': case 'ⅱ': case 'ⅲ': case 'ⅳ': case 'ⅴ': case 'ⅵ':
-                case 'ⅶ': case 'ⅷ': case 'ⅸ': case 'ⅹ': case 'ⅺ': case 'ⅻ':
-                case '⓪': case '①': case '②': case '③': case '④': case '⑤':
-                case '⑥': case '⑦': case '⑧': case '⑨': case '⑩':
-                case '⑪': case '⑫': case '⑬': case '⑭': case '⑮': case '⑯':
-                case '⑰': case '⑱': case '⑲': case '⑳':
-                case '㉑': case '㉒': case '㉓': case '㉔': case '㉕': case '㉖':
-                case '㉗': case '㉘': case '㉙': case '㉚': case '㉛': case '㉜':
-                case '㉝': case '㉞': case '㉟': case '㊱': case '㊲': case '㊳':
-                case '㊴': case '㊵': case '㊶': case '㊷': case '㊸': case '㊹':
-                case '㊺': case '㊻': case '㊼': case '㊽': case '㊾': case '㊿':
-                case '△': case '▽': case '▲': case '▼': case '☆': case '★':
-                case '♂': case '♀': case '♪': case '♭': case '§': case '†': case '‡':
-                case '‼': case '⁇': case '⁉': case '⁈':
-                case '©': case '®': case '⁑': case '⁂':
-                case '◐': case '◑': case '◒': case '◓': case '▷': case '▶': case '◁': case '◀':
-                case '♤': case '♠': case '♢': case '♦': case '♡': case '♥': case '♧': case '♣': case '❤':
-                case '☖': case '☗': case '☎': case '☁': case '☂': case '☃': case '♨': case '▱': case '⊿': case '✿':
-                case '☹': case '☺': case '☻':
-                case '✓': case '✔': case '␣': case '⏎': case '♩': case '♮': case '♫': case '♬':
-                case 'ℓ': case '№': case '℡': case 'ℵ': case 'ℏ': case '℧':
-                    if (!noTcy) { buf.Append(_chukiMap["正立"][0]); buf.Append(ch[idx]); buf.Append(_chukiMap["正立終わり"][0]); }
-                    else buf.Append(ch[idx]);
-                    return;
-                default: buf.Append(ch[idx]); return;
-            }
-        }
-        else
-        {
-            switch (ch[idx])
-            {
-                case '≪': buf.Append("《"); return;
-                case '≫': buf.Append("》"); return;
-                case '―': buf.Append("─"); return;
-                default: buf.Append(ch[idx]); return;
-            }
-        }
     }
 
     /// <summary>画像タグを出力。単ページ出力なら true を返す。Java: printImageChuki</summary>
