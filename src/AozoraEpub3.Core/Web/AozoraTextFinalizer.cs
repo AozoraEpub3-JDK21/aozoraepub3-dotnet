@@ -192,6 +192,7 @@ public class AozoraTextFinalizer
                 i++;
             }
         }
+
     }
 
     private static bool IsChapterEndingCommentLine(string line)
@@ -354,20 +355,30 @@ public class AozoraTextFinalizer
     {
         string text = string.Join("\n", lines);
 
-        // narou.rb互換: かぎ括弧内の改行(空行含む)を全角空白1つに畳む
+        // narou.rb互換: かぎ括弧内の改行(空行含む)を除去して直結する（スペース挿入なし）
         text = Regex.Replace(text, "「([^「」]*?)」", m =>
         {
-            string body = Regex.Replace(m.Groups[1].Value, @"[ \t　]*\n+[ \t　]*", "　");
+            string body = Regex.Replace(m.Groups[1].Value, @"[ \t　]*\n+[ \t　]*", "");
             return "「" + body + "」";
         }, RegexOptions.Singleline);
 
         text = Regex.Replace(text, "『([^『』]*?)』", m =>
         {
-            string body = Regex.Replace(m.Groups[1].Value, @"[ \t　]*\n+[ \t　]*", "　");
+            string body = Regex.Replace(m.Groups[1].Value, @"[ \t　]*\n+[ \t　]*", "");
             return "『" + body + "』";
         }, RegexOptions.Singleline);
 
+        // narou.rb互換: 行頭の余分な全角スペース（kakuyomuの段落インデント）を
+        // 「/『 の直前から除去する
         var newLines = text.Split('\n');
+        for (int i = 0; i < newLines.Length; i++)
+        {
+            string line = newLines[i];
+            while (line.StartsWith("　「", StringComparison.Ordinal) ||
+                   line.StartsWith("　『", StringComparison.Ordinal))
+                line = line[1..];
+            newLines[i] = line;
+        }
         lines.Clear();
         lines.AddRange(newLines);
     }
@@ -444,9 +455,11 @@ public class AozoraTextFinalizer
                     ((i < lines.Count && NoteLikeLineRegex.IsMatch(lines[i])) ||
                      (result.Count > 0 && NoteLikeLineRegex.IsMatch(result[^1])));
 
-                // 単一空行: 通常は除去、注記・区切り記号の前後のみ保持
-                if (count > 1 || keepSingle)
-                    result.Add("");
+                // narou.rb互換の圧縮: step1=count/2行、step2=3行以上は2行に上限
+                // (単一空行は除去; note隣接の単一空行のみ保持)
+                int step1 = count == 1 ? (keepSingle ? 1 : 0) : count / 2;
+                int blanksToAdd = step1 >= 3 ? 2 : step1;
+                for (int k = 0; k < blanksToAdd; k++) result.Add("");
             }
             else
             {
