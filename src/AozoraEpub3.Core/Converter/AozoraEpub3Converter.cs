@@ -10,12 +10,6 @@ namespace AozoraEpub3.Core.Converter;
 public class AozoraEpub3Converter
 {
     //---------------- Instance Properties ----------------//
-    // unused fields (removed from ConverterSettings; to be deleted in Step 9 cleanup)
-    bool _userAlterCharEscape = false;
-    bool _autoAlpha2 = false;
-    bool _autoAlphaNum2 = false;
-    bool _removeHeadSpace = false;
-
     internal ConverterSettings _settings = new();
 
     public bool commentPrint
