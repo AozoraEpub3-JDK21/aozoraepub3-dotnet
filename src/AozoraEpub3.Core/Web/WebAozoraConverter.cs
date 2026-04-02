@@ -1190,7 +1190,7 @@ public class WebAozoraConverter
         {
             string marks = m.Groups[1].Value;
             string next = m.Groups[2].Value;
-            if (Regex.IsMatch(next, @"[」］｝\]\}』】〉》〕＞>≫)）\u201d\u201c\u2019〟　☆★♪［―]"))
+            if (Regex.IsMatch(next, @"[」］｝\]\}』】〉》〕＞>≫)）\u201d\u201c\u2019〟〝　☆★♪［―""]"))
                 return marks + next;
             if (Regex.IsMatch(next, @"[ 、。]"))
                 return marks + "　";

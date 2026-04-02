@@ -356,15 +356,18 @@ public class AozoraTextFinalizer
         string text = string.Join("\n", lines);
 
         // narou.rb互換: かぎ括弧内の改行(空行含む)を除去して直結する（スペース挿入なし）
+        // また、句点直後の全角スペースを除去（narou.rb互換）
         text = Regex.Replace(text, "「([^「」]*?)」", m =>
         {
             string body = Regex.Replace(m.Groups[1].Value, @"[ \t　]*\n+[ \t　]*", "");
+            body = body.Replace("。　", "。");
             return "「" + body + "」";
         }, RegexOptions.Singleline);
 
         text = Regex.Replace(text, "『([^『』]*?)』", m =>
         {
             string body = Regex.Replace(m.Groups[1].Value, @"[ \t　]*\n+[ \t　]*", "");
+            body = body.Replace("。　", "。");
             return "『" + body + "』";
         }, RegexOptions.Singleline);
 
@@ -682,6 +685,8 @@ public class AozoraTextFinalizer
                         '=' => '＝',
                         '<' => '＜',
                         '>' => '＞',
+                        '＜' => '〈',
+                        '＞' => '〉',
                         '(' => '（',
                         ')' => '）',
                         '*' => '＊',
