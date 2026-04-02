@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -69,6 +70,12 @@ public class WebAozoraConverter
     private string _pageBaseUri = "";
     private int _interval = 700;
     private string? _dstPath;
+    private string _htmlCacheDir = "";
+    private bool _useHtmlCache = true;
+    private bool _cacheOnly = false;
+    private bool? _useHtmlCacheOverride;
+    private bool? _cacheOnlyOverride;
+    private string? _htmlCacheRootOverride;
 
     /// <summary>ダウンロード待ち画像リスト (srcUrl, localRelPath)</summary>
     private readonly List<(string url, string localPath)> _pendingImageDownloads = new();
@@ -101,6 +108,9 @@ public class WebAozoraConverter
         NarouFormatSettings settings,
         int interval = 700,
         string? dstPath = null,
+        bool? useHtmlCache = null,
+        bool? cacheOnly = null,
+        string? htmlCacheRootDir = null,
         CancellationToken ct = default)
     {
         var parsed = ParseUrlContext(urlString);
@@ -121,8 +131,12 @@ public class WebAozoraConverter
         {
             _interval = Math.Max(500, interval),
             _baseUri = parsed.BaseUri,
-            _dstPath = dstPath
+            _dstPath = dstPath,
+            _useHtmlCacheOverride = useHtmlCache,
+            _cacheOnlyOverride = cacheOnly,
+            _htmlCacheRootOverride = htmlCacheRootDir
         };
+        converter.InitializeHtmlCache(parsed.Fqdn);
 
         return await adapter.ConvertAsync(converter, parsed.UrlString, ct);
     }
@@ -137,6 +151,9 @@ public class WebAozoraConverter
         NarouFormatSettings settings,
         int interval = 700,
         string? dstPath = null,
+        bool? useHtmlCache = null,
+        bool? cacheOnly = null,
+        string? htmlCacheRootDir = null,
         CancellationToken ct = default)
     {
         var parsed = ParseUrlContext(urlString);
@@ -157,8 +174,12 @@ public class WebAozoraConverter
         {
             _interval = Math.Max(500, interval),
             _baseUri = parsed.BaseUri,
-            _dstPath = dstPath
+            _dstPath = dstPath,
+            _useHtmlCacheOverride = useHtmlCache,
+            _cacheOnlyOverride = cacheOnly,
+            _htmlCacheRootOverride = htmlCacheRootDir
         };
+        converter.InitializeHtmlCache(parsed.Fqdn);
 
         var lines = await adapter.ConvertAsync(converter, parsed.UrlString, ct);
         return (lines, converter);
@@ -325,7 +346,8 @@ public class WebAozoraConverter
                                 LogAppender.Append($"  目次ページ {pageIdx}/{tocTotalPages}");
                                 try
                                 {
-                                    await Task.Delay(Math.Max(500, _interval), ct);
+                                    if (!HasHtmlCache(nextTocUrl))
+                                        await Task.Delay(Math.Max(500, _interval), ct);
                                     string tocPageHtml = await DownloadHtmlAsync(nextTocUrl, null, ct);
                                     LogAppender.Println(" : Loaded.");
                                     var tocPageDoc = await ParseAsync(tocPageHtml);
@@ -393,8 +415,11 @@ public class WebAozoraConverter
                 if (downloadCount > 0)
                 {
                     int delay = (downloadCount % 10 == 0) ? 5000 : _interval;
-                    try { await Task.Delay(delay, ct); }
-                    catch (OperationCanceledException) { break; }
+                    if (!HasHtmlCache(chapterHref))
+                    {
+                        try { await Task.Delay(delay, ct); }
+                        catch (OperationCanceledException) { break; }
+                    }
                 }
 
                 LogAppender.Append($"[{chapterIdx + 1}/{chapterHrefs.Count}] {chapterHref}");
@@ -1411,6 +1436,13 @@ public class WebAozoraConverter
 
     private async Task<string> DownloadHtmlAsync(string url, string? referer, CancellationToken ct, int maxRetries = 2)
     {
+        if (_useHtmlCache && TryReadHtmlCache(url, out string? cached))
+        {
+            return cached!;
+        }
+        if (_cacheOnly)
+            throw new InvalidOperationException($"キャッシュ未命中のため取得できません: {url}");
+
         Exception? lastEx = null;
         for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
@@ -1431,12 +1463,99 @@ public class WebAozoraConverter
 
                 using var response = await _http.SendAsync(request, ct);
                 response.EnsureSuccessStatusCode();
-                return await response.Content.ReadAsStringAsync(ct);
+                string html = await response.Content.ReadAsStringAsync(ct);
+                if (_useHtmlCache)
+                    TryWriteHtmlCache(url, html);
+                return html;
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception e) { lastEx = e; }
         }
         throw lastEx!;
+    }
+
+    private void InitializeHtmlCache(string fqdn)
+    {
+        // 明示オプション未指定時のみ環境変数を参照
+        if (!_useHtmlCacheOverride.HasValue)
+            _useHtmlCache = Environment.GetEnvironmentVariable("AOZORA_WEB_CACHE_DISABLE") != "1";
+        else
+            _useHtmlCache = _useHtmlCacheOverride.Value;
+
+        if (!_cacheOnlyOverride.HasValue)
+            _cacheOnly = Environment.GetEnvironmentVariable("AOZORA_WEB_CACHE_ONLY") == "1";
+        else
+            _cacheOnly = _cacheOnlyOverride.Value;
+
+        if (!_useHtmlCache)
+            return;
+
+        string root;
+        if (!string.IsNullOrWhiteSpace(_htmlCacheRootOverride))
+        {
+            root = _htmlCacheRootOverride!;
+        }
+        else if (!string.IsNullOrWhiteSpace(_dstPath))
+        {
+            root = Path.Combine(_dstPath!, ".webcache");
+        }
+        else
+        {
+            root = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "AozoraEpub3",
+                "webcache");
+        }
+
+        _htmlCacheDir = Path.Combine(root, fqdn);
+        Directory.CreateDirectory(_htmlCacheDir);
+    }
+
+    private bool TryReadHtmlCache(string url, out string? html)
+    {
+        html = null;
+        if (string.IsNullOrEmpty(_htmlCacheDir)) return false;
+
+        string cachePath = GetHtmlCachePath(url);
+        if (!File.Exists(cachePath)) return false;
+
+        try
+        {
+            html = File.ReadAllText(cachePath, Encoding.UTF8);
+            return html.Length > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private bool HasHtmlCache(string url)
+    {
+        if (!_useHtmlCache) return false;
+        if (string.IsNullOrEmpty(_htmlCacheDir)) return false;
+        return File.Exists(GetHtmlCachePath(url));
+    }
+
+    private void TryWriteHtmlCache(string url, string html)
+    {
+        if (string.IsNullOrEmpty(_htmlCacheDir)) return;
+        try
+        {
+            string cachePath = GetHtmlCachePath(url);
+            File.WriteAllText(cachePath, html, Encoding.UTF8);
+        }
+        catch
+        {
+            // キャッシュ書き込み失敗は変換続行
+        }
+    }
+
+    private string GetHtmlCachePath(string url)
+    {
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(url));
+        string key = Convert.ToHexString(hash).ToLowerInvariant();
+        return Path.Combine(_htmlCacheDir, key + ".html");
     }
 
     // ─── HTML パース ───────────────────────────────────────────

@@ -78,6 +78,23 @@ dotnet run --project src/AozoraEpub3.Cli -- <ファイルパス>
 dotnet run --project src/AozoraEpub3.Cli -- --url https://ncode.syosetu.com/nXXXX/ -d ./output
 ```
 
+### URL変換のキャッシュ運用（再ダウンロード削減）
+
+```bash
+# 通常（既定）: キャッシュを使う。未キャッシュURLは取得して保存
+dotnet run --project src/AozoraEpub3.Cli -- --url <URL> -d ./output --web-cache-mode on
+
+# オフライン再実行: キャッシュ済みページのみで変換（未命中は失敗）
+dotnet run --project src/AozoraEpub3.Cli -- --url <URL> -d ./output --web-cache-mode only
+
+# キャッシュ無効
+dotnet run --project src/AozoraEpub3.Cli -- --url <URL> -d ./output --web-cache-mode off
+```
+
+- `--web-cache-dir <PATH>` を指定するとキャッシュ保存先を固定できます。
+- 未指定時の保存先は `--dst` 配下の `.webcache`（`--dst` 未指定時は LocalAppData 配下）です。
+- 既存の環境変数 `AOZORA_WEB_CACHE_DISABLE` / `AOZORA_WEB_CACHE_ONLY` も引き続き利用可能です。
+
 ### GUI起動
 
 ```bash

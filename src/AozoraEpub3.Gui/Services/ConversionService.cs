@@ -142,7 +142,7 @@ public sealed class ConversionService
 
         // HTML取得 + 画像ダウンロード (async)
         var (lines, webConverter) = await WebAozoraConverter.ConvertToAozoraLinesWithConverterAsync(
-            url, webConfigDir, narouSettings, downloadIntervalMs, outDir, ct);
+            url, webConfigDir, narouSettings, downloadIntervalMs, outDir, ct: ct);
 
         if (lines == null || lines.Count == 0)
             throw new InvalidOperationException($"Web変換に失敗しました: {url}");
