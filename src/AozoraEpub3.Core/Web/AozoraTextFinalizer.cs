@@ -19,8 +19,14 @@ public class AozoraTextFinalizer
 
     private const string OpenBrackets = "「『〔（【〈《≪";
     private const string CloseBrackets = "」』〕）】〉》≫";
-    private static readonly Regex SceneSeparatorRegex = new(@"^[ 　]*[◇◆]+[ 　]*$", RegexOptions.Compiled);
-    private static readonly Regex NoteLikeLineRegex = new(@"^[ 　]*[☆★※◇◆■□●○◎△▲▽▼]", RegexOptions.Compiled);
+    private static readonly Regex BorderSymbolLineRegex = new(
+        @"^[ 　\t]*[■□◆◇○◎●★☆\*＊※♡♥❤∽♤♠§♯]+[ 　\t]*$",
+        RegexOptions.Compiled);
+    private static readonly Regex DashSeparatorLineRegex = new(
+        @"^[ 　\t]*[─━―ー－]{3,}[ 　\t]*$",
+        RegexOptions.Compiled);
+    private static readonly Regex NoteLikeLineRegex = new(@"^[ 　]*[☆★※◇◆■□●○◎△▲▽▼─━―ー－]", RegexOptions.Compiled);
+    private static readonly Regex DecimalPointRegex = new(@"([0-9０-９〇一二三四五六七八九]+)[\.．]([0-9０-９〇一二三四五六七八九]+)", RegexOptions.Compiled);
 
     public AozoraTextFinalizer(NarouFormatSettings settings)
     {
@@ -35,10 +41,13 @@ public class AozoraTextFinalizer
         if (_settings.EnablePackBlankLine)
             PackBlankLine(lines);
 
-        EnsureSceneSeparatorSpacing(lines);
-
         if (_settings.EnableAuthorComments)
             DetectAndMarkAuthorComments(lines);
+
+        EnsureBorderSymbolSpacing(lines);
+        EnsureDashSeparatorSpacing(lines);
+        NormalizeLeadingAsciiSpace(lines);
+        EnsureChapterEndingSpacing(lines);
 
         // 改ページ直後の見出し化（漢数字変換より前に実行し、見出し行を保護する）
         if (_settings.EnableEnchantMidashi)
@@ -50,6 +59,14 @@ public class AozoraTextFinalizer
             HankakuNumToZenkaku(lines);
 
         AlphabetToZenkaku(lines, _settings.EnableAlphabetForceZenkaku);
+
+        if (_settings.EnableConvertNumToKanji)
+            ExceptionReconvertKanjiToNum(lines);
+
+        if (_settings.EnableConvertSymbolsToZenkaku)
+            ConvertSymbolsToZenkaku(lines);
+
+        NormalizeNestedQuoteOpeners(lines);
 
         if (_settings.EnableHalfIndentBracket || _settings.EnableAutoIndent)
             HalfIndentBracketAndAutoIndent(lines);
@@ -72,24 +89,124 @@ public class AozoraTextFinalizer
         LogAppender.Println("ファイナライズ処理が完了しました");
     }
 
-    /// <summary>場面転換行（◇/◆）の前後に空行を補完する</summary>
-    private static void EnsureSceneSeparatorSpacing(List<string> lines)
+    /// <summary>区切り記号行の前後に空行を補完し、4字下げする (narou.rb互換)</summary>
+    private static void EnsureBorderSymbolSpacing(List<string> lines)
     {
         for (int i = 0; i < lines.Count; i++)
         {
-            if (!SceneSeparatorRegex.IsMatch(lines[i])) continue;
+            if (!BorderSymbolLineRegex.IsMatch(lines[i])) continue;
 
-            if (i > 0 && lines[i - 1].Length > 0)
+            // narou.rb: jisage(line, 4)
+            string trimmed = lines[i].TrimStart(' ', '　', '\t');
+            lines[i] = "\u3000\u3000\u3000\u3000" + trimmed;
+
+            if (i > 0 && !IsBlankLine(lines[i - 1]))
             {
                 lines.Insert(i, "");
                 i++;
             }
 
-            if (i + 1 < lines.Count && lines[i + 1].Length > 0)
+            if (i + 1 < lines.Count && !IsBlankLine(lines[i + 1]))
             {
                 lines.Insert(i + 1, "");
             }
         }
+    }
+
+    private static bool IsBlankLine(string line) => line.Trim(' ', '　', '\t').Length == 0;
+
+    /// <summary>罫線（─等のみの行）前後の空行と行頭全角スペースを補完する</summary>
+    private static void EnsureDashSeparatorSpacing(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            if (!DashSeparatorLineRegex.IsMatch(lines[i])) continue;
+
+            string trimmed = lines[i].TrimStart(' ', '　', '\t');
+            lines[i] = "　" + trimmed;
+
+            if (i > 0 && !IsBlankLine(lines[i - 1]))
+            {
+                lines.Insert(i, "");
+                i++;
+            }
+        }
+    }
+
+    /// <summary>行頭半角スペースを全角スペースへ正規化する</summary>
+    private static void NormalizeLeadingAsciiSpace(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines[i];
+            if (line.Length < 2 || line[0] != ' ') continue;
+            if (line.StartsWith("［＃", StringComparison.Ordinal)) continue;
+
+            int idx = 0;
+            while (idx < line.Length && line[idx] == ' ') idx++;
+            if (idx >= line.Length) continue;
+
+            lines[i] = "　" + line[idx..];
+        }
+    }
+
+    /// <summary>
+    /// 会話内の二重引用符開始を正規化する。
+    /// 例: 「”～」 → 「“～」、 「〟～」 → 「〝～」
+    /// </summary>
+    private static void NormalizeNestedQuoteOpeners(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines[i]
+                .Replace("「”", "「“", StringComparison.Ordinal)
+                .Replace("「〟", "「〝", StringComparison.Ordinal);
+
+            // 呪文表記（「＝」を含む引用）だけを 〝...〟 に寄せる。
+            line = Regex.Replace(line, "[\"”]([^\"”\n]*?＝[^\"”\n]*?)[\"”]", "〝$1〟");
+            line = Regex.Replace(line, "〟([^〟\n]*?＝[^〟\n]*?)〟", "〝$1〟");
+
+            lines[i] = line;
+        }
+    }
+
+
+    /// <summary>
+    /// 章末の作者コメント周辺だけ空行を補完する。
+    /// 汎用ルールを広げると差分が増えるため、互換差が出やすい末尾パターンに限定する。
+    /// </summary>
+    private static void EnsureChapterEndingSpacing(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            if (!IsChapterEndingCommentLine(lines[i]) && !IsChapterEndingSeparatorLine(lines, i))
+                continue;
+
+            if (i <= 0 || !IsBlankLine(lines[i - 1]))
+                continue;
+
+            bool hasTwoBlanksBefore = i - 2 >= 0 && IsBlankLine(lines[i - 2]);
+            if (!hasTwoBlanksBefore)
+            {
+                lines.Insert(i, "");
+                i++;
+            }
+        }
+    }
+
+    private static bool IsChapterEndingCommentLine(string line)
+    {
+        string trimmed = line.TrimStart(' ', '　', '\t');
+        return trimmed.StartsWith("余談ですが、", StringComparison.Ordinal);
+    }
+
+    private static bool IsChapterEndingSeparatorLine(List<string> lines, int index)
+    {
+        if (index + 1 >= lines.Count) return false;
+        if (!DashSeparatorLineRegex.IsMatch(lines[index])) return false;
+
+        string next = lines[index + 1].TrimStart(' ', '　', '\t');
+        return next.StartsWith("余談ですが、", StringComparison.Ordinal);
     }
 
     /// <summary>前書き・後書きの自動検出と注記挿入 (narou.rb互換)</summary>
@@ -235,16 +352,21 @@ public class AozoraTextFinalizer
     /// <summary>かぎ括弧内の自動連結</summary>
     private static void AutoJoinInBrackets(List<string> lines)
     {
-        // 複数行をまたぐ括弧内連結のため全行を一度結合して処理
         string text = string.Join("\n", lines);
-        bool changed = true;
-        while (changed)
+
+        // narou.rb互換: かぎ括弧内の改行(空行含む)を全角空白1つに畳む
+        text = Regex.Replace(text, "「([^「」]*?)」", m =>
         {
-            string before = text;
-            text = Regex.Replace(text, "「([^「」]*)\n([^「」]*)」", "「$1　$2」");
-            text = Regex.Replace(text, "『([^『』]*)\n([^『』]*)』", "『$1　$2』");
-            changed = text != before;
-        }
+            string body = Regex.Replace(m.Groups[1].Value, @"[ \t　]*\n+[ \t　]*", "　");
+            return "「" + body + "」";
+        }, RegexOptions.Singleline);
+
+        text = Regex.Replace(text, "『([^『』]*?)』", m =>
+        {
+            string body = Regex.Replace(m.Groups[1].Value, @"[ \t　]*\n+[ \t　]*", "　");
+            return "『" + body + "』";
+        }, RegexOptions.Singleline);
+
         var newLines = text.Split('\n');
         lines.Clear();
         lines.AddRange(newLines);
@@ -377,6 +499,9 @@ public class AozoraTextFinalizer
             if (line.Length == 0) continue;
             if (ShouldSkipConversion(line)) continue; // URL行・変換日時行スキップ
 
+            // narou.rb互換: 数字間の小数点を中点へ寄せる
+            line = DecimalPointRegex.Replace(line, "$1・$2");
+
             // サブタイトル行（中見出し・大見出し）は縦中横または全角数字変換のみ
             // 2桁: ［＃縦中横］...［＃縦中横終わり］で囲む（縦書き時に横組み表示）
             // 1桁 / 3桁以上: 全角数字に変換
@@ -408,6 +533,8 @@ public class AozoraTextFinalizer
 
     private static readonly Regex NumToKanjiRegex = new(@"[\d０-９,，]+", RegexOptions.Compiled);
     private static readonly Regex SubtitleDigitRegex = new(@"[\d０-９]+", RegexOptions.Compiled);
+    private static readonly Regex ReconvertAfterAlphaRegex = new(@"([Ａ-Ｚａ-ｚ])([〇一二三四五六七八九・～]+)", RegexOptions.Compiled);
+    private static readonly Regex ReconvertBeforeUnitRegex = new(@"([〇一二三四五六七八九・～]+)([Ａ-Ｚａ-ｚ％㎜㎝㎞㎎㎏㏄㎡㎥])", RegexOptions.Compiled);
 
     /// <summary>全角数字を半角に正規化</summary>
     private static string NormalizeDigits(string s)
@@ -512,6 +639,86 @@ public class AozoraTextFinalizer
             if (c >= 'a' && c <= 'z') sb.Append((char)(c - 'a' + 'ａ'));
             else if (c >= 'A' && c <= 'Z') sb.Append((char)(c - 'A' + 'Ａ'));
             else sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // B4.5: 記号全角化 (narou.rb: enable_convert_symbols_to_zenkaku)
+    // ═══════════════════════════════════════════════════════════════
+
+    private static readonly Regex SingleQuotePairRegex = new("'([^'\\n]+)'", RegexOptions.Compiled);
+
+    private static void ConvertSymbolsToZenkaku(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines[i];
+            if (ShouldSkipConversion(line)) continue;
+
+            lines[i] = TransformOutsideAnnotations(line, part =>
+            {
+                if (part.Length == 0) return part;
+                part = SingleQuotePairRegex.Replace(part, "〝$1〟");
+
+                var sb = new System.Text.StringBuilder(part.Length);
+                foreach (char ch in part)
+                {
+                    sb.Append(ch switch
+                    {
+                        '=' => '＝',
+                        '<' => '＜',
+                        '>' => '＞',
+                        '(' => '（',
+                        ')' => '）',
+                        '*' => '＊',
+                        _ => ch
+                    });
+                }
+                return sb.ToString();
+            });
+        }
+    }
+
+    /// <summary>漢数字化した数値のうち、英字・単位に隣接する箇所を全角アラビア数字へ戻す</summary>
+    private static void ExceptionReconvertKanjiToNum(List<string> lines)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            string line = lines[i];
+            if (line.Length == 0) continue;
+            if (ShouldSkipConversion(line)) continue;
+
+            lines[i] = TransformOutsideAnnotations(line, s =>
+            {
+                s = ReconvertAfterAlphaRegex.Replace(s, m =>
+                    m.Groups[1].Value + KanjiDigitsToZenkakuDigits(m.Groups[2].Value));
+                s = ReconvertBeforeUnitRegex.Replace(s, m =>
+                    KanjiDigitsToZenkakuDigits(m.Groups[1].Value) + m.Groups[2].Value);
+                return s;
+            });
+        }
+    }
+
+    private static string KanjiDigitsToZenkakuDigits(string s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (char c in s)
+        {
+            sb.Append(c switch
+            {
+                '〇' => '０',
+                '一' => '１',
+                '二' => '２',
+                '三' => '３',
+                '四' => '４',
+                '五' => '５',
+                '六' => '６',
+                '七' => '７',
+                '八' => '８',
+                '九' => '９',
+                _ => c
+            });
         }
         return sb.ToString();
     }
