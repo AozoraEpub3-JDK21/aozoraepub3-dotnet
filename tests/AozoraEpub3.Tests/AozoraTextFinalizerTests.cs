@@ -143,6 +143,80 @@ public class AozoraTextFinalizerTests
         Assert.Contains("n8005ls", lines[0]);
     }
 
+    // ── 監査 #15 (Java 側 PR #47): タグ内は変換対象外 ──
+
+    /// <summary>
+    /// 見出し化された底本行でも href に注記が混入しないこと。
+    ///
+    /// 底本行は enchantMidashi によって ［＃中見出し］ で包まれたうえで URL を含むため、
+    /// URL ガードより見出し判定を先に評価する（Java と同じ順序）。
+    /// href はタグ除外で保護し、表示テキストは従来どおり縦中横される。
+    /// </summary>
+    [Fact]
+    public void ConvertNumToKanji_MidashiUrlLine_HrefNotBroken()
+    {
+        var finalizer = CreateFinalizer(convertNumToKanji: true);
+        const string url = "https://www.aozora.gr.jp/cards/000035/files/1567_14913.html";
+        var lines = new List<string>
+        {
+            $"［＃３字下げ］［＃中見出し］底本： <a href=\"{url}\">{url}</a>［＃中見出し終わり］",
+        };
+        finalizer.Finalize(lines);
+
+        string href = ExtractFirstHref(lines[0]);
+        Assert.Equal(url, href);
+        Assert.DoesNotContain("［＃", href);
+
+        // 表示テキスト（タグの外）は従来どおり変換される。
+        // 本実装は 3 桁以上を全角数字にする（ちょうど 2 桁のみ縦中横）ため ００００３５ になる。
+        // Java 側は 2 桁以上を縦中横にするため ［＃縦中横］000035［＃縦中横終わり］ になり、
+        // ここは既知の実装差異（判定順とは別問題。docs 参照）。
+        Assert.Contains("００００３５", lines[0]);
+    }
+
+    /// <summary>顔文字 (&gt;_&lt;) をタグと誤検出しないこと</summary>
+    [Fact]
+    public void ConvertNumToKanji_Emoticon_NotTreatedAsTag()
+    {
+        var finalizer = CreateFinalizer(convertNumToKanji: true);
+        var lines = new List<string> { "顔(>_<)文字12345です(>_<)" };
+        finalizer.Finalize(lines);
+
+        Assert.Contains("顔(>_<)文字", lines[0]);
+        Assert.Contains("です(>_<)", lines[0]);
+        Assert.DoesNotContain("12345", lines[0]);
+    }
+
+    /// <summary>裸の '&lt;' の後ろにある注記が従来どおり保護されること</summary>
+    [Fact]
+    public void ConvertNumToKanji_ChukiAfterBareAngleBracket_StillProtected()
+    {
+        var finalizer = CreateFinalizer(convertNumToKanji: true);
+        var lines = new List<string> { "条件は A<B です。［＃ここから1字下げ］" };
+        finalizer.Finalize(lines);
+
+        Assert.Contains("［＃ここから1字下げ］", lines[0]);
+    }
+
+    /// <summary>相対 href（URL ガードに掛からない行）でもタグ内が保護されること</summary>
+    [Fact]
+    public void ConvertNumToKanji_RelativeHref_NotConverted()
+    {
+        var finalizer = CreateFinalizer(convertNumToKanji: true);
+        var lines = new List<string> { "参考： <a href=\"/a/12345/b.html\">リンク12345です</a>" };
+        finalizer.Finalize(lines);
+
+        Assert.Equal("/a/12345/b.html", ExtractFirstHref(lines[0]));
+        // タグの外は変換される
+        Assert.DoesNotContain("リンク12345です", lines[0]);
+    }
+
+    private static string ExtractFirstHref(string line)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(line, "href=\"([^\"]*)\"");
+        return m.Success ? m.Groups[1].Value : string.Empty;
+    }
+
     // ── Fix 3: PackBlankLine ──
 
     private static AozoraTextFinalizer CreatePackBlankLineFinalizer() =>
