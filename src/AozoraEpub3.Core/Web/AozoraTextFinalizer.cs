@@ -482,8 +482,18 @@ public class AozoraTextFinalizer
     private static bool ShouldSkipConversion(string line) =>
         line.Contains("://") || line.StartsWith("変換日時");
 
-    /// <summary>注記 ［＃...］ の範囲を除外して変換関数を適用</summary>
-    private static readonly Regex AnnotationRegex = new(@"［＃[^］]*］", RegexOptions.Compiled);
+    /// <summary>
+    /// 注記 ［＃...］ と HTML タグ &lt;...&gt; の範囲を除外して変換関数を適用。
+    ///
+    /// タグを除外するのは、&lt;a href="...URL..."&gt; の属性値が変換されるとリンクが壊れるため
+    /// （Java 側の監査 #15 / PR #47 と同じ対策）。表示テキスト（タグの外）は従来どおり変換される。
+    ///
+    /// タグ判定は「'&lt;' の直後が英字」かつ「閉じ '&gt;' がある」ものに限定している。
+    /// これを緩めると本文中の裸の '&lt;'（数式の A&lt;B、顔文字の (&gt;_&lt;) 等）が
+    /// タグと誤検出され、間のテキストが変換されなくなる。
+    /// </summary>
+    private static readonly Regex AnnotationRegex =
+        new(@"［＃[^］]*］|</?[a-zA-Z][^>]*>", RegexOptions.Compiled);
 
     private static string TransformOutsideAnnotations(string line, Func<string, string> transform)
     {
@@ -513,37 +523,48 @@ public class AozoraTextFinalizer
         {
             string line = lines[i];
             if (line.Length == 0) continue;
-            if (ShouldSkipConversion(line)) continue; // URL行・変換日時行スキップ
-
-            // narou.rb互換: 数字間の小数点を中点へ寄せる
-            line = DecimalPointRegex.Replace(line, "$1・$2");
 
             // サブタイトル行（中見出し・大見出し）は縦中横または全角数字変換のみ
             // 2桁: ［＃縦中横］...［＃縦中横終わり］で囲む（縦書き時に横組み表示）
             // 1桁 / 3桁以上: 全角数字に変換
+            //
+            // URL ガード (ShouldSkipConversion) より先に判定する。Java 側と同じ順序。
+            // 底本行は enchantMidashi によって ［＃中見出し］ で包まれたうえで URL を含むため、
+            // 順序を逆にすると行ごとスキップされ、表示テキストの縦中横まで失われて
+            // Java と出力が食い違う。href は TransformOutsideAnnotations のタグ除外で保護される。
             if (line.Contains("［＃中見出し］") || line.Contains("［＃大見出し］"))
             {
                 lines[i] = TransformOutsideAnnotations(line, s =>
-                    SubtitleDigitRegex.Replace(s, m =>
+                {
+                    // narou.rb互換: 数字間の小数点を中点へ寄せる
+                    s = DecimalPointRegex.Replace(s, "$1・$2");
+                    return SubtitleDigitRegex.Replace(s, m =>
                     {
                         string digits = NormalizeDigits(m.Value); // 全角数字も半角に統一
                         if (digits.Length == 2)
                             return $"［＃縦中横］{digits}［＃縦中横終わり］";
                         return HankakuToZenkaku(digits);
-                    }));
+                    });
+                });
                 continue;
             }
 
-            // 半角数字 → 全角数字 → 漢数字 (注記内スキップ)
+            if (ShouldSkipConversion(line)) continue; // URL行・変換日時行スキップ
+
+            // 半角数字 → 全角数字 → 漢数字 (注記・タグ内スキップ)
             lines[i] = TransformOutsideAnnotations(line, s =>
-                NumToKanjiRegex.Replace(s, m =>
+            {
+                // narou.rb互換: 数字間の小数点を中点へ寄せる
+                s = DecimalPointRegex.Replace(s, "$1・$2");
+                return NumToKanjiRegex.Replace(s, m =>
                 {
                     string digits = m.Value;
                     // カンマ含む数字はそのまま全角化
                     if (digits.Contains(',') || digits.Contains('，'))
                         return HankakuToZenkaku(digits.Replace('，', ','));
                     return DigitsToKanji(NormalizeDigits(digits));
-                }));
+                });
+            });
         }
     }
 
