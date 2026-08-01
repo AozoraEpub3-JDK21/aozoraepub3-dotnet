@@ -13,10 +13,24 @@
 <link rel="stylesheet" type="text/css" href="../css/horizontal_middle.css"/>
 <link rel="stylesheet" type="text/css" href="../css/horizontal.css"/>
 {{ end }}
+{{ ## TITLE_LENGTH は Epub3Writer が投入する表示文字数(タグ除去済) 旧バージョンとの組合せ用フォールバック ## -}}
+{{ if TITLE_LENGTH == null && TITLE != null -}}
+{{ TITLE_LENGTH = TITLE.size -}}
+{{ end -}}
+{{ ## TITLE も無い場合は上の代入が null になるため、0 にする(タイトル無しでも旧レイアウトを維持) ## -}}
+{{ if TITLE_LENGTH == null -}}
+{{ TITLE_LENGTH = 0 -}}
+{{ end -}}
 <style type="text/css">
 .title, .subtitle, .orgtitle, .suborgtitle, .creator, .subcreator, .publisher, .series { line-height: 1.25; }
 .series { font-size:1.25em; }
+{{ if TITLE_LENGTH > 80 -}}
+.title { font-size:1.2em; }
+{{ else if TITLE_LENGTH > 45 -}}
+.title { font-size:1.4em; }
+{{ else -}}
 .title { font-size:1.75em; }
+{{ end -}}
 .title ruby rt { font-size:.4em; }
 .orgtitle { font-size:1.4em; }
 .orgtitle ruby rt { font-size:.5em; }
