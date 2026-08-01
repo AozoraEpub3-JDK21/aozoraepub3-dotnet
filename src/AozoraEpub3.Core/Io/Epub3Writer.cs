@@ -209,6 +209,44 @@ public class Epub3Writer : IEpub3Writer
 
     void SetContextVar(string key, object? value) => scriptObject![key] = value;
 
+    // ─── タイトルページの表示文字数 ───────────────────────────────
+    // Java 版 Epub3Writer.displayTextLength と同一の処理順・同一の正規表現。
+    // (D:\git\AozoraEpub3\AozoraEpub3 docs/title-page-autofit-plan.md 参照)
+    static readonly System.Text.RegularExpressions.Regex RubyRtRegex =
+        new(@"<rt[^>]*>.*?</rt>", System.Text.RegularExpressions.RegexOptions.Compiled);
+    static readonly System.Text.RegularExpressions.Regex RubyRpRegex =
+        new(@"<rp[^>]*>.*?</rp>", System.Text.RegularExpressions.RegexOptions.Compiled);
+    static readonly System.Text.RegularExpressions.Regex ImgTagRegex =
+        new(@"<img[^>]*>", System.Text.RegularExpressions.RegexOptions.Compiled);
+    static readonly System.Text.RegularExpressions.Regex AnyTagRegex =
+        new(@"<[^>]+>", System.Text.RegularExpressions.RegexOptions.Compiled);
+    static readonly System.Text.RegularExpressions.Regex EntityRefRegex =
+        new(@"&[#a-zA-Z0-9]{1,9};", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>タイトルページの表示文字数を返す。
+    /// ルビの rt/rp の中身と全タグを除去し、外字 img・文字実体参照は1文字として数える</summary>
+    internal static int DisplayTextLength(string? html)
+    {
+        if (html == null) return 0;
+        string text = RubyRpRegex.Replace(RubyRtRegex.Replace(html, ""), "");
+        text = ImgTagRegex.Replace(text, "〓");
+        text = AnyTagRegex.Replace(text, "");
+        text = EntityRefRegex.Replace(text, "〓");
+        return CodePointCount(text);
+    }
+
+    /// <summary>Java の String.codePointCount 相当 (サロゲートペアを1文字として数える)</summary>
+    static int CodePointCount(string text)
+    {
+        int count = 0;
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (char.IsHighSurrogate(text[i]) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1])) i++;
+            count++;
+        }
+        return count;
+    }
+
     Stream GetTemplateInputStream(string fileName)
     {
         int idx = fileName.LastIndexOf('/');
@@ -363,7 +401,13 @@ public class Epub3Writer : IEpub3Writer
                 if (bookInfo.TitlePageType == BookInfo.TITLE_HORIZONTAL) converter.vertical = false;
 
                 string? line;
-                if ((line = bookInfo.GetTitleText()) != null)    SetContextVar("TITLE",     converter.ConvertTitleLineToEpub3(line));
+                if ((line = bookInfo.GetTitleText()) != null)
+                {
+                    string convertedTitle = converter.ConvertTitleLineToEpub3(line);
+                    SetContextVar("TITLE", convertedTitle);
+                    // タイトルページの font-size 段階調整用 タグを除いた表示文字数
+                    SetContextVar("TITLE_LENGTH", DisplayTextLength(convertedTitle));
+                }
                 if ((line = bookInfo.GetSubTitleText()) != null) SetContextVar("SUBTITLE",  converter.ConvertTitleLineToEpub3(line));
                 if ((line = bookInfo.GetOrgTitleText()) != null) SetContextVar("ORGTITLE",  converter.ConvertTitleLineToEpub3(line));
                 if ((line = bookInfo.GetSubOrgTitleText()) != null) SetContextVar("SUBORGTITLE", converter.ConvertTitleLineToEpub3(line));
