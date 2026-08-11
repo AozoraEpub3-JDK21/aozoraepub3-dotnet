@@ -236,7 +236,10 @@ public class WebAozoraConverter
         }
         string? author = GetExtractText(doc, _queryMap.GetValueOrDefault(ExtractId.AUTHOR));
 
-        if (series != null) lines.Add(series);
+        // SERIES と TITLE が同一要素にマッチするサイト (青空文庫の単話 HTML 等) では
+        // 表題が二重になるため、series が title と同一の場合は出力しない
+        // (Java 側 WebAozoraConverter#printSeriesAndTitle と同一挙動)
+        if (series != null && series != title) lines.Add(series);
         lines.Add(title);
         if (author != null) lines.Add(author);
         lines.Add("");
